@@ -71,7 +71,7 @@
         column (* 5 (rem n 100))]
     (if val
       (set! (.-fillStyle ctx) "#000")
-      (set! (.-fillStyle ctx) "#eee"))
+      (set! (.-fillStyle ctx) "#eaeaea"))
     (.fillRect ctx row column 4 4)))
 
 (defn- paint
@@ -87,7 +87,6 @@
 (defn- launch-painter-agent
   "Creates a new painter 'agent' that reads new states from the `<state` channel and redraws the canvas accordingly."
   [<state board-ref max-refresh]
-  (println "Max refresh: " max-refresh)
   (go-loop [last-redraw 0]
     (when-let [new-state (<! <state)]
       (let [ct (.getTime (js/Date.))
@@ -136,8 +135,9 @@
        {:width  500
         :height 500
         :ref    (fn [el] (reset! board-ref el))
-        :style  {:background-color :#fafafa
-                 :margin           :1rem
-                 :border-color     :#000}}]]]
+        :style  {:padding          "7px 6px 6px 7px"
+                 :border-radius    :0.3rem
+                 :border           "1px solid #eaeaea"
+                 :background-color :#fff}}]]]
     (finally
       (put! >command :finish))))
