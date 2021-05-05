@@ -4,15 +4,15 @@
       [reagent.dom :as d]
       [clojure.core.async :as async :refer [put! <! >!]]))
 
-(defn start [running? current-state-ref f >state]
+(defn start [running? current-state-ref f >state delay]
   (async/go-loop []
     (when @running?
       (>! >state @current-state-ref)
-      (<! (async/timeout 100))
+      (<! (async/timeout (max 1 (or @delay 200))))
       (swap! current-state-ref f)
       (recur))))
 
-(defn create-model [board-ref f initial-state]
+(defn create-model [board-ref f initial-state delay]
   (let [current  (atom initial-state)
         <command (async/chan 100)
         >state   (async/chan 100)
@@ -23,7 +23,7 @@
         (case c
           :start (do
                     (reset! running? true)
-                    (start running? current f >state))
+                    (start running? current f >state delay))
           :stop  (reset! running? false)
           :reset (do
                     (reset! current initial-state)
@@ -54,16 +54,28 @@
     (recur)))
 
 (defn ui-automata [f initial-state opts]
-  (r/with-let [board-ref (r/atom nil)
-               [>command <state running?]  (create-model board-ref f initial-state)
-               _ (painter <state board-ref)
-               button-style {:margin :0.5rem :padding :0.5rem}]
+  (r/with-let [board-ref                   (r/atom nil)
+               delay                       (r/atom 200)
+               [>command <state running?]  (create-model board-ref f initial-state delay)
+               _                           (painter <state board-ref)
+               button-style                {:margin :0.5rem :padding :0.5rem}]
     [:<>
      [:div
       [:button {:style button-style :on-click #(put! >command (if @running? :stop :start))}
        (if @running? "Stop" "Start")]
-      ;[:button {:style button-style :on-click #(put! >command :stop)} "Stop"]
-      [:button {:style button-style :on-click #(put! >command :reset)} "Reset"]]
+      [:button {:style button-style :on-click #(put! >command :reset)} "Reset"]
+      [:span {:style {:margin-left :2rem}}]
+      [:label {:for :delay} "Delay (in ms)"]
+      [:input {:id :delay
+               :type :text :value (str @delay)
+               :style button-style
+               :on-change
+               (fn [e]
+                 (try
+                   (reset! delay (int (-> e .-target .-value)))
+                   (catch :default e
+                     (println e)
+                     (js/alert "Exception"))))}]]
      [:div
       [:canvas
        {:width  500
