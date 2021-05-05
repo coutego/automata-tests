@@ -12,7 +12,7 @@
       (swap! current-state-ref f)
       (recur))))
 
-(defn create-model [board-ref f initial-state delay]
+(defn create-model [f initial-state delay]
   (let [current  (atom initial-state)
         <command (async/chan 100)
         >state   (async/chan 100)
@@ -35,13 +35,11 @@
 (defn paint-cell [n val ctx]
   (let [row    (* 5 (quot n 100))
         column (* 5 (rem n 100))]
-    (when val
-      (.fillRect ctx row column 4 4))))
-      ;(.strokeRect ctx row column 4 4))))
+    (when val (.fillRect ctx row column 4 4))))
 
 (defn paint [state board-ref]
   (let [ctx (.getContext @board-ref "2d")]
-    (.clearRect ctx 0 0 500 500) ;(.width @board-ref) (.height @board-ref))
+    (.clearRect ctx 0 0 500 500)
     (doall
      (map-indexed
       #(paint-cell %1 %2 ctx)
@@ -56,7 +54,7 @@
 (defn ui-automata [f initial-state opts]
   (r/with-let [board-ref                   (r/atom nil)
                delay                       (r/atom 200)
-               [>command <state running?]  (create-model board-ref f initial-state delay)
+               [>command <state running?]  (create-model f initial-state delay)
                _                           (painter <state board-ref)
                button-style                {:margin :0.5rem :padding :0.5rem}]
     [:<>
@@ -85,6 +83,7 @@
                  :margin           :1rem
                  :border-color     :#000}}]]]))
 
+;;; Example function definitions
 (def initial-state-rand (mapv (fn [_] (< (rand-int 10) 2)) (range 10000)))
 (def initial-state-e
   (-> (mapv (fn [_] false) (range 10000))
@@ -126,17 +125,17 @@
       (and (not val) (= nei 3)) true
       :else                     false)))
 
-(defn parity-xy [n state] (= 1 (rem (neighbourgs n state) 2)))
-
 (defn conway [state]
   (into [] (map-indexed (fn [n v] (conway-xy n v state)) state)))
+
+(defn parity-xy [n state] (= 1 (rem (neighbourgs n state) 2)))
 
 (defn parity [state]
   (into [] (map-indexed (fn [n _] (parity-xy n state)) state)))
 
 (defn home-page []
   [:div
-   [:h1 "Cellular automata test project"]
+   [:h1 "Cellular automata tests"]
    [:h2 "Conway"]
    [ui-automata conway initial-state-rand]
    [:h2 "Parity"]
