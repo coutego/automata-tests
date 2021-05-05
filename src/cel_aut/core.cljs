@@ -1,90 +1,12 @@
 (ns cel-aut.core
-    (:require
-      [reagent.core :as r]
-      [reagent.dom :as d]
-      [clojure.core.async :as async :refer [put! <! >!]]))
+  (:require
+   [cel-aut.automata :as aut]
+   [reagent.dom :as d]))
 
-(defn start [running? current-state-ref f >state delay]
-  (async/go-loop []
-    (when @running?
-      (>! >state @current-state-ref)
-      (<! (async/timeout (max 1 (or @delay 200))))
-      (swap! current-state-ref f)
-      (recur))))
-
-(defn create-model [f initial-state delay]
-  (let [current  (atom initial-state)
-        <command (async/chan 100)
-        >state   (async/chan 100)
-        running? (r/atom false)
-        _        (put! >state @current)]
-    (async/go-loop []
-      (let [c (<! <command)]
-        (case c
-          :start (do
-                    (reset! running? true)
-                    (start running? current f >state delay))
-          :stop  (reset! running? false)
-          :reset (do
-                    (reset! current initial-state)
-                    (>! >state @current))
-          (js/alert (str "Command not recognized " c))))
-      (recur))
-    [<command >state running?]))
-
-(defn paint-cell [n val ctx]
-  (let [row    (* 5 (quot n 100))
-        column (* 5 (rem n 100))]
-    (when val (.fillRect ctx row column 4 4))))
-
-(defn paint [state board-ref]
-  (let [ctx (.getContext @board-ref "2d")]
-    (.clearRect ctx 0 0 500 500)
-    (doall
-     (map-indexed
-      #(paint-cell %1 %2 ctx)
-      state))))
-
-(defn painter [<state board-ref]
-  (async/go-loop []
-    (let [new-state (<! <state)]
-      (paint new-state board-ref))
-    (recur)))
-
-(defn ui-automata [f initial-state opts]
-  (r/with-let [board-ref                   (r/atom nil)
-               delay                       (r/atom 200)
-               [>command <state running?]  (create-model f initial-state delay)
-               _                           (painter <state board-ref)
-               button-style                {:margin :0.5rem :padding :0.5rem}]
-    [:<>
-     [:div
-      [:button {:style button-style :on-click #(put! >command (if @running? :stop :start))}
-       (if @running? "Stop" "Start")]
-      [:button {:style button-style :on-click #(put! >command :reset)} "Reset"]
-      [:span {:style {:margin-left :2rem}}]
-      [:label {:for :delay} "Delay (in ms)"]
-      [:input {:id :delay
-               :type :text :value (str @delay)
-               :style button-style
-               :on-change
-               (fn [e]
-                 (try
-                   (reset! delay (int (-> e .-target .-value)))
-                   (catch :default e
-                     (println e)
-                     (js/alert "Exception"))))}]]
-     [:div
-      [:canvas
-       {:width  500
-        :height 500
-        :ref    (fn [el] (reset! board-ref el))
-        :style  {:background-color :#eee
-                 :margin           :1rem
-                 :border-color     :#000}}]]]))
-
-;;; Example function definitions
+;; Initial random state. It's a value instead of a fn so reset restores the original state
 (def initial-state-rand (mapv (fn [_] (< (rand-int 10) 2)) (range 10000)))
+
+;; Letter 'E' state
 (def initial-state-e
   (-> (mapv (fn [_] false) (range 10000))
       (assoc 4849 1)
@@ -99,12 +21,16 @@
       (assoc 5250 1)
       (assoc 5251 1)))
 
-(defn v [state x y]
+(defn v
+  "Value at coordinates x y"
+  [state x y]
   (let [x (mod x 100)
         y (mod y 100)]
     (get state (+ y (* 100 x)))))
 
-(defn neighbourgs [n state]
+(defn neighbourgs
+  "Sum of the neighbourgs of a cell"
+  [n state]
   (let [x           (quot n 100)
         y           (rem n 100)]
     (+ (v state (dec x) (dec y))
@@ -116,7 +42,9 @@
        (v state (inc x) y)
        (v state (inc x) (inc y)))))
 
-(defn conway-xy [n val state]
+(defn conway-xy
+  "Calculates the value of the cell at x y on the next generation for the Conway algorithm"
+  [n val state]
   (let [nei (neighbourgs n state)]
     (cond
       (and val (< nei 2))       false
@@ -125,21 +53,28 @@
       (and (not val) (= nei 3)) true
       :else                     false)))
 
-(defn conway [state]
+(defn conway
+  "Calculates the next state from a given one for the Conway algorithm"
+  [state]
   (into [] (map-indexed (fn [n v] (conway-xy n v state)) state)))
 
-(defn parity-xy [n state] (= 1 (rem (neighbourgs n state) 2)))
+(defn parity-xy
+  "Calculates the value of the cell at x y on the next generation for the parity algorithm"
+  [n state]
+  (= 1 (rem (neighbourgs n state) 2)))
 
-(defn parity [state]
+(defn parity
+  "Calculates the next state from a given one for the parity algorithm"
+  [state]
   (into [] (map-indexed (fn [n _] (parity-xy n state)) state)))
 
 (defn home-page []
   [:div
    [:h1 "Cellular automata tests"]
    [:h2 "Conway"]
-   [ui-automata conway initial-state-rand]
+   [aut/ui-automata conway initial-state-rand {:delay 100 :max-refresh 20}]
    [:h2 "Parity"]
-   [ui-automata parity initial-state-e]])
+   [aut/ui-automata parity initial-state-e {:delay 500 :max-refresh 20}]])
 
 (defn mount-root []
   (d/render [home-page] (.getElementById js/document "app")))
