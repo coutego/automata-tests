@@ -3,7 +3,8 @@
    [cel-aut.automata :as aut]
    [reagent.dom :as d]))
 
-;; Initial random state. It's a value instead of a fn so reset restores the original state
+;; Initial random state. It's a value instead of a fn so reset restores the
+;; original state
 (def initial-state-rand (mapv (fn [_] (< (rand-int 10) 2)) (range 10000)))
 
 ;; Letter 'E' state
@@ -43,7 +44,8 @@
        (v state (inc x) (inc y)))))
 
 (defn conway-xy
-  "Calculates the value of the cell at x y on the next generation for the Conway algorithm"
+  "Calculates the value of the cell at x y on the next generation for the Conway
+  algorithm"
   [n val state]
   (let [nei (neighbourgs n state)]
     (cond
@@ -59,7 +61,8 @@
   (into [] (map-indexed (fn [n v] (conway-xy n v state)) state)))
 
 (defn parity-xy
-  "Calculates the value of the cell at x y on the next generation for the parity algorithm"
+  "Calculates the value of the cell at x y on the next generation for the parity
+  algorithm"
   [n state]
   (= 1 (rem (neighbourgs n state) 2)))
 

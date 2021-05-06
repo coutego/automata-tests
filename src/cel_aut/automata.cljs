@@ -1,11 +1,14 @@
 (ns cel-aut.automata
   (:require
    [reagent.core :as r]
-   [clojure.core.async :as async :refer [go-loop chan timeout put! <! >! close!]]))
+   [clojure.core.async
+    :as async
+    :refer [go-loop chan timeout put! <! >! close!]]))
 
 (defn- launch-board-update-agent
-  "Creates an 'agent' which keeps updating the state (by mutating the `current-state-ref`) for
-   as long as `running?` refers to true. If exists as soon as `running?` refers to false"
+  "Creates an 'agent' which keeps updating the state (by mutating the
+  `current-state-ref`) for as long as `running?` refers to true. If
+  exits as soon as `running?` refers to false"
   [running? >state next-state! delay]
   (go-loop []
     (when @running?
@@ -14,12 +17,16 @@
       (recur))))
 
 (defn- launch-model-agent
-  "Creates an 'agent' which represents the logical model of one automata (board + controls).
+  "Creates an 'agent' which represents the logical model of one automata
+  (board + controls).
   It returns a triple [`>command` `<state` `running?`] where:
-  - >command is a channel where the owner can send commands to this agent. Supported commands are :start, :stop, :reset and :finish.
+  - >command is a channel where the owner can send commands to this agent.
+    Supported commands are :start, :stop, :reset and :finish.
     This channel is meant to only be written to.
-  - <state is a channel where the owner can receive new states of the board, as they are generated. This channel is meant to only be read from.
-  - running? is a function that returns true is the model is running and false otherwise."
+  - <state is a channel where the owner can receive new states of the board,
+    as they are generated. This channel is meant to only be read from.
+  - running? is a function that returns true is the model is running and false
+    otherwise."
   [f initial-state delay]
   (let [current         (atom initial-state)
         previous        (atom [])
@@ -38,14 +45,17 @@
         push&put-state! (fn [st]
                           (push-state! st)
                           (put! >state @current))
-        push-next-state! (fn [] (push-state! (f @current)))
-        _               (put! >state @current)]
+        push-next-state! (fn [] (push-state! (f @current)))]
+    (put! >state @current)
     (go-loop []
       (when-let [c (<! <command)]
         (case c
           :start    (do
                       (reset! running? true)
-                      (launch-board-update-agent running? >state push-next-state! delay))
+                      (launch-board-update-agent running?
+                                                 >state
+                                                 push-next-state!
+                                                 delay))
           :stop     (reset! running? false)
           :reset    (do
                       (reset! running? false)
@@ -64,8 +74,10 @@
         (recur)))
     [<command >state (fn [] @running?)]))
 
+
 (defn- paint-cell
-  "Paints the cell of coordinates given by n in the given canvas context with value `val` (true or false)"
+  "Paints the cell of coordinates given by n in the given canvas context with
+  value `val` (true or false)"
   [n val ctx]
   (let [row    (* 5 (quot n 100))
         column (* 5 (rem n 100))]
@@ -85,7 +97,8 @@
       state))))
 
 (defn- launch-painter-agent
-  "Creates a new painter 'agent' that reads new states from the `<state` channel and redraws the canvas accordingly."
+  "Creates a new painter 'agent' that reads new states from the `<state`
+  channel and redraws the canvas accordingly."
   [<state board-ref max-refresh]
   (go-loop [last-redraw 0]
     (when-let [new-state (<! <state)]
@@ -98,21 +111,27 @@
           (recur last-redraw))))))
 
 (defn ui-automata
-  "Reagent component for an automata with the given initial state (a vector of 100 x 100 elements where the element with coordinates
+  "Reagent component for an automata with the given initial state
+  (a vector of 100 x 100 elements where the element with coordinates
   (x, y) is located at 100x + y) and the given transition function `f`.
   `f` is a function from one state to the next one.
-  The only supported option is `delay`, which is the number of miliseconds to wait before creating the new state."
+  The only supported option is `delay`, which is the number of miliseconds
+  to wait before creating the new state."
   [f initial-state {:keys [delay max-refresh]
                     :or {delay 200 max-refresh 0}
                     :as opts}]
   (r/with-let [board-ref                   (r/atom nil)
                delay                       (r/atom (max 1 delay))
-               [>command <state running?]  (launch-model-agent f initial-state delay)
-               _                           (launch-painter-agent <state board-ref max-refresh)
+               [>command <state running?]  (launch-model-agent f
+                                                               initial-state
+                                                               delay)
+               _                           (launch-painter-agent <state board-ref
+                                                                 max-refresh)
                button-style                {:margin :0.5rem :padding :0.5rem}]
     [:<>
      [:div
-      [:button {:style button-style :on-click #(put! >command (if (running?) :stop :start))}
+      [:button {:style button-style :on-click #(put! >command
+                                                     (if (running?) :stop :start))}
        (if (running?) "Stop" "Start")]
       [:button {:style button-style :on-click #(put! >command :previous)} "Previous"]
       [:button {:style button-style :on-click #(put! >command :next)} "Next"]
@@ -124,12 +143,11 @@
                :style button-style
                :size :8
                :on-change
-               (fn [e]
-                 (try
-                   (reset! delay (int (-> e .-target .-value)))
-                   (catch :default e
-                     (println e)
-                     (js/alert "Exception"))))}]]
+               (fn [e] (try
+                         (reset! delay (int (-> e .-target .-value)))
+                         (catch :default e
+                           (println e)
+                           (js/alert "Exception"))))}]]
      [:div
       [:canvas
        {:width  500
