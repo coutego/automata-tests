@@ -95,13 +95,23 @@
       #(paint-cell %1 %2 ctx)
       state))))
 
+(defn- throttle [c time]
+  (let [t   (chan (async/sliding-buffer 1))
+        ret (chan 100)]
+    (async/pipe c t)
+    (go-loop []
+      (<! (timeout time))
+      (when-let [st (<! t)]
+        (>! ret st)
+        (recur)))
+    ret))
+
 (defn- launch-painter-agent
   "Creates a new painter 'agent' that reads new states from the `<state`
   channel and redraws the canvas accordingly."
   [<state board-ref max-refresh]
-  (let [c (async/pipe <state (chan (async/sliding-buffer 1)))]
+  (let [c (throttle <state max-refresh)]
     (go-loop []
-      (<! (timeout max-refresh))
       (when-let [new-state (<! c)]
         (paint new-state board-ref)
         (recur)))))
