@@ -74,7 +74,6 @@
         (recur)))
     [<command >state (fn [] @running?)]))
 
-
 (defn- paint-cell
   "Paints the cell of coordinates given by n in the given canvas context with
   value `val` (true or false)"
@@ -100,15 +99,12 @@
   "Creates a new painter 'agent' that reads new states from the `<state`
   channel and redraws the canvas accordingly."
   [<state board-ref max-refresh]
-  (go-loop [last-redraw 0]
-    (when-let [new-state (<! <state)]
-      (let [ct (.getTime (js/Date.))
-            diff (- ct last-redraw)]
-        (if (>= diff max-refresh)
-          (do
-            (paint new-state board-ref)
-            (recur ct))
-          (recur last-redraw))))))
+  (let [c (async/pipe <state (chan (async/sliding-buffer 1)))]
+    (go-loop []
+      (<! (timeout max-refresh))
+      (when-let [new-state (<! c)]
+        (paint new-state board-ref)
+        (recur)))))
 
 (defn ui-automata
   "Reagent component for an automata with the given initial state
