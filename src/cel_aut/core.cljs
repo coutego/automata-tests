@@ -75,9 +75,9 @@
   [:div
    [:h1 "Cellular automata tests"]
    [:h2 "Conway"]
-   [aut/ui-automata conway initial-state-rand {:delay 100 :max-refresh 20}]
+   [aut/ui-automata conway initial-state-rand {:delay 100 :max-refresh 16}]
    [:h2 "Parity"]
-   [aut/ui-automata parity initial-state-e {:delay 500 :max-refresh 20}]])
+   [aut/ui-automata parity initial-state-e {:delay 500 :max-refresh 16}]])
 
 (defn mount-root []
   (d/render [home-page] (.getElementById js/document "app")))
