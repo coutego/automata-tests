@@ -7,8 +7,8 @@
 
 (defn- next-action
   "Calculates the next state resulting from a :next action"
-  [current f]
-  (-> current
+  [current f & [stop?]]
+  (-> (if stop? (assoc current :running? false) current)
       (as-> it (update it :history conj (:board it)))
       (update :history (comp vec #(drop (- (count %) (:keep current)) %)))
       (update :board f)))
@@ -17,6 +17,7 @@
   "Calculates the previous state resulting from a :next action"
   [current]
   (-> current
+      (assoc :running? false)
       (update :history (comp vec butlast))
       (as-> it
           (if-let [prev (last (:history current))]
@@ -66,14 +67,13 @@
                                                          (assoc :running? false)
                                                          (assoc :board initial-board)
                                                          (assoc :history []))))
-          :next         (put! >state (swap! current #(next-action % f)))
+          :next         (put! >state (swap! current #(next-action % f true)))
           :previous     (put! >state (swap! current previous-action))
-          :finish       (do (async/close! <command) (async/close! >state))
           {:delay x}    (put! >state (swap! current assoc :delay x))
           {:keep x}     (put! >state (swap! current assoc :keep x))
           {:throttle x} (put! >state (swap! current assoc :throttle x))
+          :finish       (do (async/close! <command) (async/close! >state))
           (js/alert (str "Command not recognized " c)))
-        (tap> {:action c :new-state @current})
         (recur)))
     [<command >state]))
 
@@ -98,22 +98,26 @@
       #(paint-cell %1 %2 ctx)
       state))))
 
-(defn- throttle [c]
-  (let [t   (chan (async/sliding-buffer 1))
+(defn- throttled-board-chan
+  "From a `<state` channel, create a throttle channel where the boards are written.
+  The throttling time is taken from the state"
+  [<state]
+  (let [tmp (chan (async/sliding-buffer 1))
         ret (chan)]
-    (async/pipe c t)
+    (async/pipe <state tmp)
     (go-loop []
-      (when-let [st (<! t)]
-        (>! ret (:board st))
-        (<! (timeout (-> st :throttle (or 0) (max 0) (min 5000))))
-        (recur)))
+      (when-let [st (<! tmp)]
+        (let [thr (-> st :throttle (or 0) (max 0) (min 5000))]
+          (>! ret (:board st))
+          (<! (timeout thr))
+          (recur))))
     ret))
 
 (defn- launch-painter-agent
   "Creates a new painter 'agent' that reads new states from the `<state`
   channel and redraws the canvas accordingly."
-  [<state board-ref throttle-t]
-  (let [c (throttle <state)]
+  [<state board-ref]
+  (let [c (throttled-board-chan <state)]
     (go-loop []
       (when-let [new-state (<! c)]
         (paint new-state board-ref)
@@ -150,19 +154,22 @@
                     :as opts}]
   (r/with-let [board-ref          (r/atom nil)
                state              (r/atom nil)
-               [>command <state]  (launch-model-agent f initial-board (max 1 delay) keep throttle)
+               [>command <state]  (launch-model-agent f
+                                                      initial-board
+                                                      (max 1 delay)
+                                                      keep
+                                                      throttle)
                [<st1 <st2]        (let [m (async/mult <state)
                                         ms1 (chan 2)
                                         ms2 (chan 2)]
                                     (async/tap m ms1)
                                     (async/tap m ms2)
                                     [ms1 ms2])
-               _                  (launch-painter-agent <st1 board-ref throttle)]
+               _                    (launch-painter-agent <st1 board-ref)]
     (go-loop []
       (when-let [s (<! <st2)]
         (reset! state s)
         (recur)))
-    (tap> @state)
     [:<>
      [:div
       (if (:running? @state)
