@@ -10,17 +10,10 @@
 ;; Letter 'E' state
 (def initial-state-e
   (-> (mapv (fn [_] false) (range 10000))
-      (assoc 4849 1)
-      (assoc 4850 1)
-      (assoc 4851 1)
-      (assoc 4949 1)
-      (assoc 5049 1)
-      (assoc 5050 1)
-      (assoc 5051 1)
-      (assoc 5149 1)
-      (assoc 5249 1)
-      (assoc 5250 1)
-      (assoc 5251 1)))
+      (as-> it
+          (reduce (fn [acc n] (assoc acc n 1))
+                  it
+                  [4849 4850 4851 4949 5049 5050 5051 5149 5249 5250 5251]))))
 
 (defn v
   "Value at coordinates x y"
