@@ -100,9 +100,9 @@
         ret (chan 100)]
     (async/pipe c t)
     (go-loop []
-      (<! (timeout time))
       (when-let [st (<! t)]
         (>! ret st)
+        (<! (timeout time))
         (recur)))
     ret))
 
