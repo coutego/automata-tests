@@ -5,7 +5,7 @@
 
 ;; Initial random state. It's a value instead of a fn so reset restores the
 ;; original state
-(def initial-state-rand (mapv (fn [_] (< (rand-int 10) 2)) (range 10000)))
+(def initial-state-rand (mapv (fn [_] (< (rand-int 10) 3)) (range 10000)))
 
 ;; Letter 'E' state
 (def initial-state-e
@@ -68,9 +68,9 @@
   [:div
    [:h1 "Cellular automata tests"]
    [:h2 "Conway"]
-   [aut/ui-automata conway initial-state-rand {:delay 100 :max-refresh 32}]
+   [aut/ui-automata conway initial-state-rand {:delay 100 :throttle 32 :keep 100}]
    [:h2 "Parity"]
-   [aut/ui-automata parity initial-state-e {:delay 500 :max-refresh 32}]])
+   [aut/ui-automata parity initial-state-e {:delay 200 :throttle 32 :keep 1000}]])
 
 (defn mount-root []
   (d/render [home-page] (.getElementById js/document "app")))
