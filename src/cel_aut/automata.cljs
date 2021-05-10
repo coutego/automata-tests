@@ -39,41 +39,40 @@
 (defn- launch-model-agent
   "Creates an 'agent' which represents the logical model of one automata
   (board + controls).
-  It returns a triple [`>command` `<state` `running?`] where:
+  It returns a couple [`>command` `<state`] where:
   - >command is a channel where the owner can send commands to this agent.
-    Supported commands are :start, :stop, :reset and :finish.
-    This channel is meant to only be written to.
-  - <state is a channel where the owner can receive new states of the board,
-    as they are generated. This channel is meant to only be read from.
+    Supported commands are :start, :stop, :next, :previous, :reset,
+    {:keep milis}, {:throttle milis}, {:delay milis} and :finish.
+    This channel is meant to only be written to by clients.
+  - <state is a channel where the owner can receive new states,
+    as they are generated. This channel is meant to only be read from by clients
   - running? is a function that returns true is the model is running and false
     otherwise."
   [f initial-board delay keep throttle]
-  (let [current  (atom
-                  {:board    initial-board
-                   :running? false
-                   :delay    delay
-                   :keep     (max 0 (or keep 0))
-                   :throttle (max 0 (or throttle 0))
-                   :history  []})
-        <command (chan 10)
-        >state   (chan 10)]
+  (let [current     (atom {:board    initial-board
+                           :running? false
+                           :delay    delay
+                           :keep     (max 0 (or keep 0))
+                           :throttle (max 0 (or throttle 0))
+                           :history  []})
+        <command    (chan 10)
+        >state      (chan (async/sliding-buffer 100))
+        swap-state! (fn [& fs] (put! >state (apply swap! current fs)))]
     (put! >state @current)
     (go-loop []
       (when-let [c (<! <command)]
         (match c
-          :start        (launch-board-update-agent current f >state)
-          :stop         (put! >state (swap! current assoc :running? false))
-          :reset        (put! >state (swap! current #(-> %
-                                                         (assoc :running? false)
-                                                         (assoc :board initial-board)
-                                                         (assoc :history []))))
-          :next         (put! >state (swap! current #(next-action % f true)))
-          :previous     (put! >state (swap! current previous-action))
-          {:delay x}    (put! >state (swap! current assoc :delay x))
-          {:keep x}     (put! >state (swap! current assoc :keep x))
-          {:throttle x} (put! >state (swap! current assoc :throttle x))
-          :finish       (do (async/close! <command) (async/close! >state))
-          (js/alert (str "Command not recognized " c)))
+               :start        (launch-board-update-agent current f >state)
+               :stop         (swap-state! assoc :running? false)
+               :reset        (swap-state!
+                              assoc :running? false :board initial-board :history [])
+               :next         (swap-state! #(next-action % f true))
+               :previous     (swap-state! previous-action)
+               {:delay x}    (swap-state! assoc :delay x)
+               {:keep x}     (swap-state! assoc :keep x)
+               {:throttle x} (swap-state! assoc :throttle x)
+               :finish       (do (async/close! <command) (async/close! >state))
+               (js/alert (str "Command not recognized " c)))
         (recur)))
     [<command >state]))
 
@@ -83,9 +82,7 @@
   [n val ctx]
   (let [row    (* 5 (quot n 100))
         column (* 5 (rem n 100))]
-    (if val
-      (set! (.-fillStyle ctx) "#000")
-      (set! (.-fillStyle ctx) "#eaeaea"))
+    (set! (.-fillStyle ctx) (if val "#000" "#eaeaea"))
     (.fillRect ctx row column 4 4)))
 
 (defn- paint
@@ -93,10 +90,7 @@
   [state board-ref]
   (let [ctx (.getContext @board-ref "2d")]
     (.clearRect ctx 0 0 500 500)
-    (doall
-     (map-indexed
-      #(paint-cell %1 %2 ctx)
-      state))))
+    (dorun (map-indexed #(paint-cell %1 %2 ctx) state))))
 
 (defn- throttled-board-chan
   "From a `<state` channel, create a throttle channel where the boards are written.
