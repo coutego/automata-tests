@@ -5,13 +5,13 @@
 
 ;; Initial random state. It's a value instead of a fn so reset restores the
 ;; original state
-(def initial-state-rand (mapv (fn [_] (< (rand-int 10) 3)) (range 10000)))
+(def initial-state-rand (mapv #(< (rand-int 10) 3) (range 10000)))
 
 ;; Letter 'E' state
 (def initial-state-e
-  (-> (mapv (fn [_] false) (range 10000))
+  (-> (mapv (constantly false) (range 10000))
       (as-> it
-          (reduce (fn [acc n] (assoc acc n 1))
+          (reduce #(assoc %1 %2 1)
                   it
                   [4849 4850 4851 4949 5049 5050 5051 5149 5249 5250 5251]))))
 
