@@ -159,20 +159,20 @@
                                     (async/tap m ms1)
                                     (async/tap m ms2)
                                     [ms1 ms2])
-               _                    (launch-painter-agent <st1 board-ref)]
-    (go-loop []
-      (when-let [s (<! <st2)]
-        (reset! state s)
-        (recur)))
+               _                    (launch-painter-agent <st1 board-ref)
+               _                    (go-loop []
+                                      (when-let [s (<! <st2)]
+                                        (reset! state s)
+                                        (recur)))]
     [:<>
      [:div
       (if (:running? @state)
         [ui-button "Stop" #(put! >command :stop)]
         [ui-button "Start" #(put! >command :start)])
       [:<>
-        [ui-button "Previous" #(put! >command :previous)]
-        [ui-button "Next" #(put! >command :next)]
-        [ui-button "Reset" #(put! >command :reset)]]
+       [ui-button "Previous" #(put! >command :previous)]
+       [ui-button "Next" #(put! >command :next)]
+       [ui-button "Reset" #(put! >command :reset)]]
       [:div
        [ui-input "Delay" (:delay @state) #(put! >command {:delay %})]
        [ui-input "Throttle time" (:throttle @state) #(put! >command {:throttle %})]
