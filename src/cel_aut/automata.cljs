@@ -17,8 +17,9 @@
 
 (defn do-next [st]
   (-> st
-      (as-> it (update it :history conj (:board it)))
+      (update :history conj (:board st))
       (update :history (comp vec #(drop (- (count %) (:keep st)) %)))
+      (update :count inc)
       (update :board (:f st))))
 
 (defn- do-previous [st]
@@ -26,8 +27,10 @@
       (assoc :running? false)
       (update :history (comp vec butlast))
       (as-> it
-          (if-let [prev (last (:history st))]
-            (assoc it :board prev)
+          (if-let [prev (last (:history it))]
+            (-> it
+                (assoc :board prev)
+                (update :count dec))
             it))))
 
 (defn- -do-start [st-ref]
@@ -36,11 +39,21 @@
      (when (:running? @st-ref)
        (swap! st-ref do-next)
        (-do-start st-ref)))
-   (max 1 (or (:delay @st-ref) 0))))
+   (max 0 (or (:delay @st-ref) 0))))
 
 (defn- do-start [st-ref]
   (swap! st-ref assoc :running? true)
   (-do-start st-ref))
+
+(defn- do-click [st x y]
+  (let [canvas (:canvas st)
+        el-x   (+ (.-offsetLeft canvas) (.-clientLeft canvas))
+        el-y   (+ (.-offsetTop canvas) (.-clientTop canvas))
+        x      (quot (- x el-x) 5)
+        y      (quot (- y el-y) 5)
+        p      (+ (* 100 x) y)]
+    (-> st
+        (update-in [:board p] not))))
 
 (defn command [st command]
   (match command
@@ -49,13 +62,17 @@
           :reset         (assoc st
                                 :board (:initial-board st)
                                 :history []
+                                :count 0
                                 :running? false)
           :next          (do-next st)
           :previous      (do-previous st)
           {:delay x}     (assoc st :delay x)
           {:keep x}      (assoc st :keep x)
           {:throttle x}  (assoc st :throttle x)
-          (js/alert (str "Command not recognized " c))))
+          {:click [x y]} (do-click st x y)
+          :else          (do
+                           (js/alert (str "Command not implemented: " command))
+                           st)))
 
 (defn ui-button [label on-click & [inactive?]]
   [:button
@@ -103,6 +120,7 @@
                          :board         initial-board
                          :f             f
                          :running?      false
+                         :count         0
                          :delay         (max 0 (or delay 0))
                          :keep          (max 0 (or keep 0))
                          :throttle      (max 0 (or throttle 0))
@@ -130,14 +148,24 @@
        (:throttle @state) #(swap! state command {:throttle %})]
       [ui-input "Undo levels"
        (:keep @state) #(swap! state command {:keep %})]]
+     [:div
+      {:style {:margin-bottom :0.5rem}}
+      "Generations: " (:count @state)]
 
      [:div
+      {
+       :style  {:padding          "7px 6px 6px 7px"
+                :border-radius    :0.3rem
+                :border           "1px solid #eaeaea"
+                :width  :500px
+                :height :500px
+                :background-color :#fff}}
       [:canvas
-       {:width  500
+       {:on-mouse-up #(swap! state command {:click [(-> % .-pageX) (-> % .-pageY)]})
+       ;{:on-click #(swap! state command {:on-click (-> % .-target .-value)})
+        :width  500
         :height 500
         :ref    (fn [el] (swap! state assoc :canvas el))
-        :style  {:padding          "7px 6px 6px 7px"
-                 :border-radius    :0.3rem
-                 :border           "1px solid #eaeaea"
-                 :background-color :#fff}}]]]
+        :style  {:background-color :#fff}}]]]
+
     (finally (remove-watch state ::board-watch))))
