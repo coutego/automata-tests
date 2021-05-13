@@ -4,16 +4,16 @@
    [reagent.core :as r]
    [clojure.core.match :refer-macros [match]]))
 
-(defn- paint-cell [n val ctx]
+(defn- paint-cell [n val ctx drawer]
   (let [row    (* 5 (quot n 100))
         column (* 5 (rem n 100))]
-    (set! (.-fillStyle ctx) (if val "#000" "#eaeaea"))
+    (set! (.-fillStyle ctx) (drawer val))
     (.fillRect ctx row column 4 4)))
 
-(defn- paint [st canvas]
+(defn- paint [drawer st canvas]
   (when-let [ctx (some-> canvas (.getContext "2d"))]
     (.clearRect ctx 0 0 500 500)
-    (dorun (map-indexed #(paint-cell %1 %2 ctx) st))))
+    (dorun (map-indexed #(paint-cell %1 %2 ctx drawer) st))))
 
 (defn do-next [st]
   (-> st
@@ -112,20 +112,22 @@
   - `throttle`: time in ms to use when throttling paints (i.e. paints will happen at most
     every that number of ms)
   - `keep`: number of generations to keep in memory as to be able to go to the previous board"
-  [f initial-board {:keys [delay throttle keep]
-                    :or   {delay 200 throttle 0 keep 100}
+  [f initial-board {:keys [delay throttle keep drawer]
+                    :or   {delay 200 throttle 0 keep 100
+                           drawer (fn [x] (if x "#000" "#eaeaea"))}
                     :as   opts}]
   (r/with-let
     [state      (r/atom {:initial-board initial-board
                          :board         initial-board
                          :f             f
+                         :drawer        drawer
                          :running?      false
                          :count         0
                          :delay         (max 0 (or delay 0))
                          :keep          (max 0 (or keep 0))
                          :throttle      (max 0 (or throttle 0))
                          :history       []})
-     painter    (r/atom (goog.functions.throttle paint (:throttle @state)))
+     painter    (r/atom (goog.functions.throttle (partial paint drawer) (:throttle @state)))
      _          (add-watch
                  state
                  ::board-watch
@@ -162,7 +164,6 @@
                 :background-color :#fff}}
       [:canvas
        {:on-mouse-up #(swap! state command {:click [(-> % .-pageX) (-> % .-pageY)]})
-       ;{:on-click #(swap! state command {:on-click (-> % .-target .-value)})
         :width  500
         :height 500
         :ref    (fn [el] (swap! state assoc :canvas el))
