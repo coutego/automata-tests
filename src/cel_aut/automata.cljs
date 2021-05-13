@@ -95,12 +95,12 @@
                       (catch :default e
                         (js/alert (str "Wrong value " (-> e .-target .-value))))))}]])
 
-(defn on-state-change [painter o n]
+(defn on-state-change [painter -painter o n]
   (when (or (not= (:board o) (:board n))
             (not= (:canvas o) (:canvas n)))
     (@painter (:board n) (:canvas n)))
   (when (not= (:throttle o) (:throttle n))
-    (reset! painter (goog.functions.throttle paint (:throttle n)))))
+    (reset! painter (goog.functions.throttle -painter (:throttle n)))))
 
 (defn ui-automata
   "Reagent component for an automata with the given initial board
@@ -127,11 +127,12 @@
                          :keep          (max 0 (or keep 0))
                          :throttle      (max 0 (or throttle 0))
                          :history       []})
-     painter    (r/atom (goog.functions.throttle (partial paint drawer) (:throttle @state)))
+     -painter   (partial paint drawer)
+     painter    (r/atom (goog.functions.throttle -painter (:throttle @state)))
      _          (add-watch
                  state
                  ::board-watch
-                 (fn [_ _ o n] (on-state-change painter o n)))]
+                 (fn [_ _ o n] (on-state-change painter -painter o n)))]
     [:<>
      [:div
       (if (:running? @state)
