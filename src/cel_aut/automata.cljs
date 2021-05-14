@@ -4,16 +4,19 @@
    [reagent.core :as r]
    [clojure.core.match :refer-macros [match]]))
 
-(defn- paint-cell [n val ctx drawer]
-  (let [row    (* 5 (quot n 100))
-        column (* 5 (rem n 100))]
-    (set! (.-fillStyle ctx) (drawer val))
-    (.fillRect ctx row column 4 4)))
+(defn- paint-cell [n val ctx cell-renderer]
+  (let [x     (* 5 (quot n 100))
+        y     (* 5 (rem n 100))
+        color (cell-renderer val)]
+    (set! (.-fillStyle ctx) color)
+    (.fillRect ctx x y 4 4)))
 
-(defn- paint [drawer st canvas]
-  (when-let [ctx (some-> canvas (.getContext "2d"))]
+(defn- paint [st]
+  (when-let [ctx (some-> (:canvas st) (.getContext "2d"))]
     (.clearRect ctx 0 0 500 500)
-    (dorun (map-indexed #(paint-cell %1 %2 ctx drawer) st))))
+    (let [cr (:cell-renderer st)
+          b  (:board st)]
+      (dorun (map-indexed (fn [n val] (paint-cell n val ctx cr)) b)))))
 
 (defn do-next [st]
   (-> st
@@ -57,22 +60,22 @@
 
 (defn command [st command]
   (match command
-         {:start st-ref} (do-start st-ref)
-          :stop          (assoc st :running? false)
-          :reset         (assoc st
-                                :board (:initial-board st)
-                                :history []
-                                :count 0
-                                :running? false)
-          :next          (do-next st)
-          :previous      (do-previous st)
-          {:delay x}     (assoc st :delay x)
-          {:keep x}      (assoc st :keep x)
-          {:throttle x}  (assoc st :throttle x)
-          {:click [x y]} (do-click st x y)
-          :else          (do
-                           (js/alert (str "Command not implemented: " command))
-                           st)))
+    {:start st-ref} (do-start st-ref)
+    :stop           (assoc st :running? false)
+    :reset          (assoc st
+                           :board (:initial-board st)
+                           :history []
+                           :count 0
+                           :running? false)
+    :next           (do-next st)
+    :previous       (do-previous st)
+    {:delay x}      (assoc st :delay x)
+    {:keep x}       (assoc st :keep x)
+    {:throttle x}   (assoc st :throttle x)
+    {:click [x y]}  (do-click st x y)
+    :else           (do
+                      (js/console.error "Command not implemented: " command)
+                      st)))
 
 (defn ui-button [label on-click & [inactive?]]
   [:button
@@ -95,12 +98,19 @@
                       (catch :default e
                         (js/alert (str "Wrong value " (-> e .-target .-value))))))}]])
 
-(defn on-state-change [painter -painter o n]
+(defn- make-renderer [throttle]
+  (tap> {:make-renderer throttle})
+  (goog.functions.throttle paint throttle))
+
+(defn on-state-change [st o n]
   (when (or (not= (:board o) (:board n))
             (not= (:canvas o) (:canvas n)))
-    (@painter (:board n) (:canvas n)))
+    (when-let [r (:renderer n)]
+      (r n)))
   (when (not= (:throttle o) (:throttle n))
-    (reset! painter (goog.functions.throttle -painter (:throttle n)))))
+    (js/setTimeout
+     #(swap! st assoc :renderer (make-renderer (:throttle n)))
+     1)))
 
 (defn ui-automata
   "Reagent component for an automata with the given initial board
@@ -112,27 +122,26 @@
   - `throttle`: time in ms to use when throttling paints (i.e. paints will happen at most
     every that number of ms)
   - `keep`: number of generations to keep in memory as to be able to go to the previous board"
-  [f initial-board {:keys [delay throttle keep drawer]
+  [f initial-board {:keys [delay throttle keep cell-renderer]
                     :or   {delay 200 throttle 0 keep 100
-                           drawer (fn [x] (if x "#000" "#eaeaea"))}
-                    :as   opts}]
+                           cell-renderer (fn [x] (if x "#000" "#eaeaea"))}}]
   (r/with-let
-    [state      (r/atom {:initial-board initial-board
-                         :board         initial-board
-                         :f             f
-                         :drawer        drawer
-                         :running?      false
-                         :count         0
-                         :delay         (max 0 (or delay 0))
-                         :keep          (max 0 (or keep 0))
-                         :throttle      (max 0 (or throttle 0))
-                         :history       []})
-     -painter   (partial paint drawer)
-     painter    (r/atom (goog.functions.throttle -painter (:throttle @state)))
-     _          (add-watch
-                 state
-                 ::board-watch
-                 (fn [_ _ o n] (on-state-change painter -painter o n)))]
+    [throttle (max 0 (or throttle 0))
+     state    (r/atom {:initial-board initial-board
+                       :board         initial-board
+                       :cell-renderer cell-renderer
+                       :renderer      (make-renderer throttle)
+                       :f             f
+                       :running?      false
+                       :count         0
+                       :delay         (max 0 (or delay 0))
+                       :keep          (max 0 (or keep 0))
+                       :throttle      throttle
+                       :history       []})
+     _        (add-watch
+               state
+               ::board-watch
+               (fn [_ _ o n] (on-state-change state o n)))]
     [:<>
      [:div
       (if (:running? @state)
