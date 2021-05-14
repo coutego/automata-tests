@@ -81,7 +81,7 @@
   [:button
    {:on-click on-click
     :style
-    (into {:margin :0.5rem :padding :0.5rem :width :6rem}
+    (into {:margin "0.5rem 1rem 0.5rem 0rem" :padding :0.5rem :width :6rem}
           (when inactive? {:enabled :false}))}
    label])
 
@@ -128,10 +128,10 @@
   (r/with-let
     [throttle (max 0 (or throttle 0))
      state    (r/atom {:initial-board initial-board
+                       :f             f
                        :board         initial-board
                        :cell-renderer cell-renderer
                        :renderer      (make-renderer throttle)
-                       :f             f
                        :running?      false
                        :count         0
                        :delay         (max 0 (or delay 0))
