@@ -30,7 +30,7 @@
       (assoc :running? false)
       (update :history (comp vec butlast))
       (as-> it
-          (if-let [prev (last (:history it))]
+          (if-let [prev (last (:history st))]
             (-> it
                 (assoc :board prev)
                 (update :count dec))
