@@ -113,7 +113,7 @@
   [:div
    [:h1 "Cellular automata tests"]
    [:h2 "Conway"]
-   [aut/ui-automata conway initial-state-rand {:delay 100 :throttle 32 :keep 100}]
+   [aut/ui-automata conway initial-state-rand {:delay 0 :throttle 32 :keep 100}]
    [:h2 "Parity"]
    [aut/ui-automata parity initial-state-e {:delay 200 :throttle 32 :keep 1000}]
    [:h2 "Ant"]

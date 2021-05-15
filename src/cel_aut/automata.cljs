@@ -112,20 +112,14 @@
      #(swap! st assoc :renderer (make-renderer (:throttle n)))
      1)))
 
-(defn ui-automata
-  "Reagent component for an automata with the given initial board
-  (a vector of 100 x 100 elements where the element with coordinates
-  (x, y) is located at 100x + y) and the given transition function `f`.
-  `f` is a function from one state to the next one.
-  The supported options are:
-  - `delay`: delay in ms between generations when in running mode
-  - `throttle`: time in ms to use when throttling paints (i.e. paints will happen at most
-    every that number of ms)
-  - `keep`: number of generations to keep in memory as to be able to go to the previous board"
+(defn gen-ui-automata-components
+  "Function (not reagent component) that creates the model + individual components
+  for the automata. Clients can arrange and use the returned components and properties
+  as they wish"
   [f initial-board {:keys [delay throttle keep cell-renderer]
                     :or   {delay 200 throttle 0 keep 100
                            cell-renderer (fn [x] (if x "#000" "#eaeaea"))}}]
-  (r/with-let
+  (let
     [throttle (max 0 (or throttle 0))
      state    (r/atom {:initial-board initial-board
                        :f             f
@@ -138,32 +132,48 @@
                        :keep          (max 0 (or keep 0))
                        :throttle      throttle
                        :history       []})
+
+     clean-up (fn [] (remove-watch state ::board-watch))
      _        (add-watch
                state
                ::board-watch
                (fn [_ _ o n] (on-state-change state o n)))]
-    [:<>
-     [:div
-      (if (:running? @state)
-        [ui-button "Stop" #(swap! state command :stop)]
-        [ui-button "Start" #(do-start state)])
-      [:<>
+    {:ui-start-button
+     (fn []
+       (if (:running? @state)
+         [ui-button "Stop" #(swap! state command :stop)]
+         [ui-button "Start" #(do-start state)]))
+
+     :ui-prev-button
+     (fn []
        [ui-button
         "Previous"
-        #(swap! state command :previous) (= (count (:history @state)) 0)]
-       [ui-button "Next" #(swap! state command :next)]
-       [ui-button "Reset" #(swap! state command :reset)]]]
-     [:div
-      [ui-input "Delay"
-       (:delay @state) #(swap! state command {:delay %})]
-      [ui-input "Throttle time"
-       (:throttle @state) #(swap! state command {:throttle %})]
-      [ui-input "Undo levels"
-       (:keep @state) #(swap! state command {:keep %})]]
-     [:div
-      {:style {:margin-bottom :0.5rem}}
-      "Generations: " (:count @state)]
+        #(swap! state command :previous) (= (count (:history @state)) 0)])
 
+     :ui-next-button
+     (fn []
+       [ui-button "Next" #(swap! state command :next)])
+
+     :ui-reset-button
+     (fn []
+       [ui-button "Reset" #(swap! state command :reset)])
+
+     :ui-delay-input
+     (fn []
+       [ui-input "Delay"
+        (:delay @state) #(swap! state command {:delay %})])
+
+     :ui-throttle-input
+     (fn []
+       [ui-input "Throttle time"
+        (:throttle @state) #(swap! state command {:throttle %})])
+
+     :ui-undo-input
+     (fn []
+       [ui-input "Undo levels"
+        (:keep @state) #(swap! state command {:keep %})])
+
+     :ui-board
      [:div
       {
        :style  {:padding          "7px 6px 6px 7px"
@@ -177,6 +187,37 @@
         :width  500
         :height 500
         :ref    (fn [el] (swap! state assoc :canvas el))
-        :style  {:background-color :#fff}}]]]
+        :style  {:background-color :#fff}}]]
 
-    (finally (remove-watch state ::board-watch))))
+     :running? (fn [] (:running? @state))
+     :generation (fn [] (:count @state))
+     :clean-up clean-up}))
+
+(defn ui-automata
+  "Reagent component for an automata with the given initial board
+  (a vector of 100 x 100 elements where the element with coordinates
+  (x, y) is located at 100x + y) and the given transition function `f`.
+  `f` is a function from one state to the next one.
+  The supported options are:
+  - `delay`: delay in ms between generations when in running mode
+  - `throttle`: time in ms to use when throttling paints (i.e. paints will happen at most
+    every that number of ms)
+  - `keep`: number of generations to keep in memory as to be able to go to the previous board"
+  [f initial-board {:keys [delay throttle keep cell-renderer]
+                    :or   {delay 200 throttle 0 keep 100
+                           cell-renderer (fn [x] (if x "#000" "#eaeaea"))}
+                    :as opts}]
+  (r/with-let
+    [{:keys [ui-board ui-start-button ui-prev-button ui-next-button ui-reset-button
+             generation running? ui-delay-input ui-throttle-input ui-undo-input clean-up]}
+     (gen-ui-automata-components f initial-board opts)]
+
+    [:<>
+     [:div [ui-start-button] [ui-prev-button] [ui-next-button] [ui-reset-button]]
+     [:div [ui-delay-input] [ui-throttle-input] [ui-undo-input]]
+     [:div "Running: " (if (running?) "Yes" "No ")
+      [:span {:style {:margin-left :2rem}}]
+      "Generation: " [generation]]
+     [:div {:style {:margin :1rem}}]
+     ui-board]
+    (finally (clean-up))))
