@@ -13,7 +13,7 @@
     (set! (.-fillStyle ctx) color)
     (.fillRect ctx x y 4 4)))
 
-(defn- paint [st]
+(defn- paint-board [st]
   (when-let [ctx (some-> (:canvas st) (.getContext "2d"))]
     (.clearRect ctx 0 0 500 500)
     (let [cr (:cell-renderer st)
@@ -104,8 +104,8 @@
 
 (defn- make-renderer [throttle]
   (if (> throttle 0)
-    (gf/throttle paint throttle)
-    paint))
+    (gf/throttle paint-board throttle)
+    paint-board))
 
 (defn on-state-change [st o n]
   (when (or (not= (:board o) (:board n))
