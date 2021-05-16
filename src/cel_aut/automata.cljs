@@ -123,7 +123,7 @@
   as they wish. Clients should call the :clean-up function on a r/with-let finally clause"
   [f initial-board {:keys [delay throttle keep cell-renderer]
                     :or   {delay 200 throttle 0 keep 100
-                           cell-renderer (fn [x] (if x "#000" "#eaeaea"))}}]
+                           cell-renderer (fn [x] (if x "#320" "#efeae9"))}}]
   (let
     [throttle (max 0 (or throttle 0))
      state    (r/atom {:initial-board initial-board
@@ -183,16 +183,17 @@
       {
        :style  {:padding          "7px 6px 6px 7px"
                 :border-radius    :0.3rem
-                :border           "1px solid #eaeaea"
+                :border           "1px solid hsl(40 50% 90%)"
                 :width  :500px
                 :height :500px
-                :background-color :#fff}}
+                :background-color "hsl(40 20% 95%)"
+                :box-shadow "0 0 10px hsl(40 10% 82%)"}}
       [:canvas
        {:on-mouse-up #(swap! state command {:click [(-> % .-pageX) (-> % .-pageY)]})
         :width  500
         :height 500
         :ref    (fn [el] (swap! state assoc :canvas el))
-        :style  {:background-color :#fff}}]]
+        :style  {:background-color "hsl(40 20% 95%)"}}]]
 
      :running? (fn [] (:running? @state))
      :generation (fn [] (:count @state))
@@ -210,7 +211,7 @@
   - `keep`: number of generations to keep in memory as to be able to go to the previous board"
   [f initial-board {:keys [delay throttle keep cell-renderer]
                     :or   {delay 200 throttle 0 keep 100
-                           cell-renderer (fn [x] (if x "#000" "#eaeaea"))}
+                           cell-renderer (fn [x] (if x "#420" "#faeaea"))}
                     :as opts}]
   (r/with-let
     [{:keys [ui-board ui-start-button ui-prev-button ui-next-button ui-reset-button
