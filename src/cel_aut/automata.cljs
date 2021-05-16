@@ -1,6 +1,8 @@
 (ns cel-aut.automata
   "Cellular automata reagent component"
   (:require
+   [goog.async.nextTick]
+   [goog.functions :as gf]
    [reagent.core :as r]
    [clojure.core.match :refer-macros [match]]))
 
@@ -37,12 +39,14 @@
             it))))
 
 (defn- -do-start [st-ref]
-  (js/setTimeout
-   (fn []
-     (when (:running? @st-ref)
-       (swap! st-ref do-next)
-       (-do-start st-ref)))
-   (max 0 (or (:delay @st-ref) 0))))
+  (let [del (max 0 (or (:delay @st-ref) 0))
+        f   (fn []
+              (when (:running? @st-ref)
+                (swap! st-ref do-next)
+                (-do-start st-ref)))]
+    (if (> del 0)
+      (js/setTimeout f del)
+      (this-as th (goog.async.nextTick f th)))))
 
 (defn- do-start [st-ref]
   (swap! st-ref assoc :running? true)
@@ -99,8 +103,9 @@
                         (js/alert (str "Wrong value " (-> e .-target .-value))))))}]])
 
 (defn- make-renderer [throttle]
-  (tap> {:make-renderer throttle})
-  (goog.functions.throttle paint throttle))
+  (if (> throttle 0)
+    (gf/throttle paint throttle)
+    paint))
 
 (defn on-state-change [st o n]
   (when (or (not= (:board o) (:board n))
@@ -115,7 +120,7 @@
 (defn gen-ui-automata-components
   "Function (not reagent component) that creates the model + individual components
   for the automata. Clients can arrange and use the returned components and properties
-  as they wish"
+  as they wish. Clients should call the :clean-up function on a r/with-let finally clause"
   [f initial-board {:keys [delay throttle keep cell-renderer]
                     :or   {delay 200 throttle 0 keep 100
                            cell-renderer (fn [x] (if x "#000" "#eaeaea"))}}]
