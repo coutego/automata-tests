@@ -29,7 +29,6 @@
 
 (defn- do-previous [st]
   (-> st
-      (assoc :running? false)
       (update :history (comp vec butlast))
       (as-> it
           (if-let [prev (last (:history st))]
@@ -42,7 +41,7 @@
   (let [del (max 0 (or (:delay @st-ref) 0))
         f   (fn []
               (when (:running? @st-ref)
-                (swap! st-ref do-next)
+                (swap! st-ref do-next true)
                 (-do-start st-ref)))]
     (if (> del 0)
       (js/setTimeout f del)
@@ -62,8 +61,8 @@
     (-> st
         (update-in [:board p] not))))
 
-(defn command [st command]
-  (match command
+(defn command [st cmd]
+  (match cmd
     {:start st-ref} (do-start st-ref)
     :stop           (assoc st :running? false)
     :reset          (assoc st
@@ -81,7 +80,7 @@
     {:throttle x}   (assoc st :throttle x)
     {:click [x y]}  (do-click st x y)
     :else           (do
-                      (js/console.error "Command not implemented: " command)
+                      (js/console.error "Command not implemented: " cmd)
                       st)))
 
 (defn ui-button [icon on-click & [inactive?]]
