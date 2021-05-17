@@ -55,8 +55,9 @@
   (let [canvas (:canvas st)
         el-x   (+ (.-offsetLeft canvas) (.-clientLeft canvas))
         el-y   (+ (.-offsetTop canvas) (.-clientTop canvas))
-        x      (quot (- x el-x) 5)
-        y      (quot (- y el-y) 5)
+        ratio  (/ (.-width canvas) (.-clientWidth canvas))
+        x      (quot (* ratio (- x el-x)) 5)
+        y      (quot (* ratio (- y el-y)) 5)
         p      (+ (* 100 x) y)]
     (-> st
         (update-in [:board p] not))))
