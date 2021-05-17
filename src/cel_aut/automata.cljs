@@ -71,6 +71,9 @@
                            :history []
                            :count 0
                            :running? false)
+    :clear          (-> st
+                        (command :reset)
+                        (assoc :board (mapv (constantly false) (range 10000))))
     :next           (do-next st)
     :previous       (do-previous st)
     {:delay x}      (assoc st :delay x)
@@ -81,26 +84,30 @@
                       (js/console.error "Command not implemented: " command)
                       st)))
 
-(defn ui-button [label on-click & [inactive?]]
-  [:button
-   {:on-click on-click
-    :style
-    (into {:margin "0.5rem 1rem 0.5rem 0rem" :padding :0.5rem :width :6rem}
-          (when inactive? {:enabled :false}))}
-   label])
+(defn ui-button [icon on-click & [inactive?]]
+  (when-not inactive?
+    [:div.ui.icon.button
+     {:on-click (if inactive? #() on-click)
+      :class (when inactive? "basic")
+      :disabled (if inactive? :true :false)
+      :style {:background-color "hsl(40 20% 85%)"
+              :visibility (when inactive? :hidden)}}
+
+
+     [:i.icon {:class icon}]]))
 
 (defn- ui-input [label val on-click]
-  [:span
+  [:div.field
    [:label label]
-   [:input {:id :delay
-            :type :text :value (str val)
-            :style {:margin :0.5rem :padding :0.5rem}
-            :size :8
-            :on-change
-            (fn [e] (try
-                      (on-click (int (-> e .-target .-value)))
-                      (catch :default e
-                        (js/alert (str "Wrong value " (-> e .-target .-value))))))}]])
+   [:input
+    {:type :text :value (str val)
+     :style {:padding :0.3rem}
+     :size :6
+     :on-change
+     (fn [e] (try
+               (on-click (int (-> e .-target .-value)))
+               (catch :default e
+                 (js/alert (str "Wrong value " (-> e .-target .-value))))))}]])
 
 (defn- make-renderer [throttle]
   (if (> throttle 0)
@@ -137,7 +144,6 @@
                        :keep          (max 0 (or keep 0))
                        :throttle      throttle
                        :history       []})
-
      clean-up (fn [] (remove-watch state ::board-watch))
      _        (add-watch
                state
@@ -146,22 +152,27 @@
     {:ui-start-button
      (fn []
        (if (:running? @state)
-         [ui-button "Stop" #(swap! state command :stop)]
-         [ui-button "Start" #(do-start state)]))
+         [ui-button "pause circle" #(swap! state command :stop)]
+         [ui-button "play circle" #(do-start state)]))
 
      :ui-prev-button
      (fn []
        [ui-button
-        "Previous"
-        #(swap! state command :previous) (= (count (:history @state)) 0)])
+        "step backward"
+        #(swap! state command :previous)
+        (:running? @state)])
 
      :ui-next-button
      (fn []
-       [ui-button "Next" #(swap! state command :next)])
+       [ui-button "step forward" #(swap! state command :next) (:running? @state)])
 
      :ui-reset-button
      (fn []
-       [ui-button "Reset" #(swap! state command :reset)])
+       [ui-button "recycle" #(swap! state command :reset) (:running? @state)])
+
+     :ui-clear-button
+     (fn []
+       [ui-button "trash" #(swap! state command :clear) (:running? @state)])
 
      :ui-delay-input
      (fn []
@@ -181,19 +192,18 @@
      :ui-board
      [:div
       {
-       :style  {:padding          "7px 6px 6px 7px"
+       :style  {:padding          "7px 6px 1px 7px"
                 :border-radius    :0.3rem
                 :border           "1px solid hsl(40 50% 90%)"
-                :width  :500px
-                :height :500px
-                :background-color "hsl(40 20% 95%)"
+                :background-color "hsl(40 20% 98.5%)"
                 :box-shadow "0 0 10px hsl(40 10% 82%)"}}
       [:canvas
        {:on-mouse-up #(swap! state command {:click [(-> % .-pageX) (-> % .-pageY)]})
         :width  500
         :height 500
         :ref    (fn [el] (swap! state assoc :canvas el))
-        :style  {:background-color "hsl(40 20% 95%)"}}]]
+        :style  {:background-color "hsl(40 20% 95%)"
+                 :width :100%}}]]
 
      :running? (fn [] (:running? @state))
      :generation (fn [] (:count @state))
@@ -214,16 +224,18 @@
                            cell-renderer (fn [x] (if x "#420" "#faeaea"))}
                     :as opts}]
   (r/with-let
-    [{:keys [ui-board ui-start-button ui-prev-button ui-next-button ui-reset-button
+    [{:keys [ui-board ui-start-button ui-prev-button ui-next-button ui-reset-button ui-clear-button
              generation running? ui-delay-input ui-throttle-input ui-undo-input clean-up]}
      (gen-ui-automata-components f initial-board opts)]
 
     [:<>
-     [:div [ui-start-button] [ui-prev-button] [ui-next-button] [ui-reset-button]]
-     [:div [ui-delay-input] [ui-throttle-input] [ui-undo-input]]
-     [:div "Running: " (if (running?) "Yes" "No ")
-      [:span {:style {:margin-left :2rem}}]
-      "Generation: " [generation]]
+     [:div.ui.form
+      [:div.fields
+       [ui-delay-input] [ui-throttle-input] [ui-undo-input]]]
+     ;  [:span "Generation: " [generation]]]]
      [:div {:style {:margin :1rem}}]
+     [:div.ui.buttons
+      [ui-start-button] [ui-prev-button] [ui-next-button] [ui-reset-button] [ui-clear-button]]
+     [:div {:style {:margin :0.4rem}}]
      ui-board]
     (finally (clean-up))))

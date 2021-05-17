@@ -111,14 +111,16 @@
 
 (defn home-page []
   [:div
-   [:h1 "Cellular automata tests"]
-   [:h2 "Conway"]
-   [aut/ui-automata conway initial-state-rand {:delay 0 :throttle 32 :keep 100}]
-   [:h2 "Parity"]
-   [aut/ui-automata parity initial-state-e {:delay 200 :throttle 32 :keep 1000}]
-   [:h2 "Ant"]
-   [aut/ui-automata ant initial-state-ant
-    {:delay 200 :throttle 32 :keep 1000 :cell-renderer ant-drawer}]])
+   {:style {:max-width :600px :margin-left :3% :margin-right :3% :align :center}}
+   [:div.ui.container
+    [:h1 "Cellular automata tests"]
+    [:h2 "Conway"]
+    [aut/ui-automata conway initial-state-rand {:delay 0 :throttle 32 :keep 100}]
+    [:h2 "Parity"]
+    [aut/ui-automata parity initial-state-e {:delay 200 :throttle 32 :keep 1000}]
+    [:h2 "Ant"]
+    [aut/ui-automata ant initial-state-ant
+     {:delay 200 :throttle 32 :keep 1000 :cell-renderer ant-drawer}]]])
 
 (defn mount-root []
   (d/render [home-page] (.getElementById js/document "app")))
