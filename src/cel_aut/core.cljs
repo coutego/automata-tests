@@ -18,10 +18,6 @@
 
 (def initial-state-ant
   (-> (mapv (constantly false) (range 10000))
-      (as-> it
-          (reduce #(assoc %1 %2 true)
-                  it
-                  [4849 4850 4851 4949 5049 5050 5051 5149 5249 5250 5251]))
       (assoc 5051 {:v true :dir :up})))
 
 (defn v
@@ -73,13 +69,16 @@
   [state]
   (into [] (map-indexed (fn [n _] (parity-xy n state)) state)))
 
+(defn- tap-> [kw v] (tap> {kw v}) v)
+
 (defn- find-ant [st]
-  (reduce (fn [acc n]
-            (if (map? n)
-              (reduced [(quot acc 100) (rem acc 100) n])
-              (inc acc)))
-          0
-          st))
+  (tap-> :find-ant
+         (reduce (fn [acc n]
+                   (if (map? n)
+                     (reduced [(quot acc 100) (rem acc 100) n])
+                     (inc acc)))
+                 0
+                 st)))
 
 (defn ant
   "Calculates the next state from a given one for the Langton ant algorith"
@@ -102,25 +101,29 @@
 (defn ant-drawer [val]
   (match val
          {:v v :dir dir} (case dir
-                           :up   (if v "#900" "#f88")
-                           :right (if v "#090" "#8f8")
-                           :down  (if v "#009" "#88f")
-                           :left  (if v "#909" "#f8f"))
-         false "#eaeaea"
+                           :up    (if v "hsl(0, 50%, 30%)" "hsl(0, 80%, 50%)")
+                           :right (if v "hsl(90, 50%, 30%)" "hsl(90, 80%, 50%)")
+                           :down  (if v "hsl(180, 50%, 30%)" "hsl(180, 80%, 50%)")
+                           :left  (if v "hsl(240, 50%, 30%)" "hsl(240, 80%, 50%)"))
+         false nil
          :else "black"))
 
 (defn home-page []
-  [:div
-   {:style {:max-width :600px :margin-left :3% :margin-right :3% :align :center}}
-   [:div.ui.container
-    [:h1 "Cellular automata tests"]
-    [:h2 "Conway"]
-    [aut/ui-automata conway initial-state-rand {:delay 0 :throttle 32 :keep 100}]
-    [:h2 "Parity"]
-    [aut/ui-automata parity initial-state-e {:delay 200 :throttle 32 :keep 1000}]
-    [:h2 "Ant"]
-    [aut/ui-automata ant initial-state-ant
-     {:delay 200 :throttle 32 :keep 1000 :cell-renderer ant-drawer}]]])
+  [:<>
+   [:div
+    {:style {:max-width :600px :margin-left :3% :margin-right :3% :margin-bottom :2rem :align :center}}
+    [:div.ui.container
+     [:h1 "Cellular automata tests"]
+     [:h2 "Conway"]
+     [aut/ui-automata conway initial-state-rand {:delay 0 :throttle 32 :keep 100}]
+     [:h2 "Parity"]
+     [aut/ui-automata parity initial-state-e {:delay 200 :throttle 32 :keep 1000}]
+     [:h2 "Ant"]
+     [aut/ui-automata ant initial-state-ant
+      {:delay 200 :throttle 32 :keep 1000 :cell-renderer ant-drawer}]
+
+     [:div {:style {:margin-top :2rem :opacity "0%"}} " - "]]]])
+
 
 (defn mount-root []
   (d/render [home-page] (.getElementById js/document "app")))

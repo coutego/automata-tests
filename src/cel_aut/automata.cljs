@@ -80,6 +80,7 @@
          {:keep x}       (assoc st :keep x)
          {:throttle x}   (assoc st :throttle x)
          {:click [x y]}  (do-click st x y)
+         :toggle-info    (update st :info-visible? not)
          :else           (do
                            (js/console.error "Command not implemented: " cmd)
                            st)))
@@ -96,18 +97,20 @@
 
      [:i.icon {:class icon}]]))
 
-(defn- ui-input [label val on-click]
+(defn- ui-input [label val on-click & [disabled?]]
   [:div.field
    [:label label]
    [:input
-    {:type :text :value (str val)
-     :style {:padding :0.3rem}
-     :size :6
-     :on-change
-     (fn [e] (try
-               (on-click (int (-> e .-target .-value)))
-               (catch :default e
-                 (js/alert (str "Wrong value " (-> e .-target .-value))))))}]])
+    (into
+     {:type :text :value (str val)
+      :style {:padding :0.3rem}
+      :size :6
+      :on-change
+      (fn [e] (try
+                (on-click (int (-> e .-target .-value)))
+                (catch :default e
+                  (js/alert (str "Wrong value " (-> e .-target .-value))))))}
+     (when disabled? {:disabled true}))]])
 
 (defn- make-renderer [throttle]
   (if (> throttle 0)
@@ -129,26 +132,27 @@
   for the automata. Clients can arrange and use the returned components and properties
   as they wish. Clients should call the :clean-up function on a r/with-let finally clause"
   [f initial-board {:keys [delay throttle keep cell-renderer]
-                    :or   {delay 200 throttle 0 keep 100
+                    :or   {delay         200 throttle 0 keep 100
                            cell-renderer (fn [x] (if x "hsl(40, 50%, 20%)" "hsl(40, 10%, 90%)"))}}]
   (let
-    [throttle (max 0 (or throttle 0))
-     state    (r/atom {:initial-board initial-board
-                       :f             f
-                       :board         initial-board
-                       :cell-renderer cell-renderer
-                       :renderer      (make-renderer throttle)
-                       :running?      false
-                       :count         0
-                       :delay         (max 0 (or delay 0))
-                       :keep          (max 0 (or keep 0))
-                       :throttle      throttle
-                       :history       []})
-     clean-up (fn [] (remove-watch state ::board-watch))
-     _        (add-watch
-               state
-               ::board-watch
-               (fn [_ _ o n] (on-state-change state o n)))]
+      [throttle (max 0 (or throttle 0))
+       state    (r/atom {:initial-board initial-board
+                         :f             f
+                         :board         initial-board
+                         :cell-renderer cell-renderer
+                         :renderer      (make-renderer throttle)
+                         :running?      false
+                         :count         0
+                         :delay         (max 0 (or delay 0))
+                         :keep          (max 0 (or keep 0))
+                         :throttle      throttle
+                         :history       []
+                         :info-visible? false})
+       _        (add-watch
+                 state
+                 ::board-watch
+                 (fn [_ _ o n] (on-state-change state o n)))
+       clean-up (fn [] (remove-watch state ::board-watch))]
     {:ui-start-button
      (fn []
        (if (:running? @state)
@@ -174,6 +178,10 @@
      (fn []
        [ui-button "trash" #(swap! state command :clear) (:running? @state)])
 
+     :ui-info-button
+     (fn []
+       [ui-button "info circle" #(swap! state command :toggle-info)])
+
      :ui-delay-input
      (fn []
        [ui-input "Delay"
@@ -189,25 +197,31 @@
        [ui-input "Undo levels"
         (:keep @state) #(swap! state command {:keep %})])
 
+     :ui-generation-input
+     (fn []
+       [ui-input "Generation"
+        (:count @state) #(swap! state command {:count %}) true])
+
      :ui-board
      [:div
       {
-       :style  {:padding          "7px 6px 1px 7px"
-                :border-radius    :0.3rem
-                :border           "1px solid hsl(40 50% 90%)"
-                :background-color "hsl(40 20% 98.5%)"
-                :box-shadow "0 0 10px hsl(40 10% 82%)"}}
+       :style {:padding          "7px 6px 1px 7px"
+               :border-radius    :0.3rem
+               :border           "1px solid hsl(40 50% 90%)"
+               :background-color "hsl(40 20% 98.5%)"
+               :box-shadow       "0 0 10px hsl(40 10% 82%)"}}
       [:canvas
        {:on-mouse-up #(swap! state command {:click [(-> % .-pageX) (-> % .-pageY)]})
-        :width  500
-        :height 500
-        :ref    (fn [el] (swap! state assoc :canvas el))
-        :style  {:background-color "hsl(40 20% 95%)"
-                 :width :100%}}]]
+        :width       500
+        :height      500
+        :ref         (fn [el] (swap! state assoc :canvas el))
+        :style       {:background-color "hsl(40 20% 95%)"
+                      :width            :100%}}]]
 
-     :running? (fn [] (:running? @state))
-     :generation (fn [] (:count @state))
-     :clean-up clean-up}))
+     :running?      (fn [] (:running? @state))
+     :generation    (fn [] (:count @state))
+     :info-visible? (fn [] (:info-visible? @state))
+     :clean-up      clean-up}))
 
 (defn ui-automata
   "Reagent component for an automata with the given initial board
@@ -224,18 +238,23 @@
                            cell-renderer (fn [x] (if x "#420" "#faeaea"))}
                     :as opts}]
   (r/with-let
-    [{:keys [ui-board ui-start-button ui-prev-button ui-next-button ui-reset-button ui-clear-button
-             generation running? ui-delay-input ui-throttle-input ui-undo-input clean-up]}
+    [{:keys [ui-board ui-start-button ui-prev-button ui-next-button ui-reset-button
+             ui-clear-button info-visible? ui-delay-input ui-throttle-input
+             ui-undo-input ui-generation-input ui-info-button clean-up]}
      (gen-ui-automata-components f initial-board opts)]
 
     [:<>
-     [:div.ui.form
-      [:div.fields
-       [ui-delay-input] [ui-throttle-input] [ui-undo-input]]]
-     ;  [:span "Generation: " [generation]]]]
+     ui-board
      [:div {:style {:margin :1rem}}]
      [:div.ui.buttons
       [ui-start-button] [ui-prev-button] [ui-next-button] [ui-reset-button] [ui-clear-button]]
-     [:div {:style {:margin :0.4rem}}]
-     ui-board]
+     [:span {:style {:margin-left :0.5rem}}]
+     [ui-info-button]
+     (when (info-visible?)
+       [:div.ui.segment {:style {:background-color "hsl(40, 20%, 95%)"}}
+        [:div.ui.form
+         [:div.fields
+          [ui-delay-input] [ui-throttle-input] [ui-undo-input] [ui-generation-input]]]])
+     ;  [:span "Generation: " [generation]]]]
+     [:div {:style {:margin :0.4rem}}]]
     (finally (clean-up))))
