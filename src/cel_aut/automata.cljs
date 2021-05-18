@@ -10,7 +10,7 @@
   (let [x     (* 5 (quot n 100))
         y     (* 5 (rem n 100))
         color (cell-renderer val)]
-    (set! (.-fillStyle ctx) color)
+    (set! (.-fillStyle ctx) (or color "hsl(40, 10%, 90%)"))
     (.fillRect ctx x y 4 4)))
 
 (defn- paint-board [st]
@@ -64,25 +64,25 @@
 
 (defn command [st cmd]
   (match cmd
-    {:start st-ref} (do-start st-ref)
-    :stop           (assoc st :running? false)
-    :reset          (assoc st
-                           :board (:initial-board st)
-                           :history []
-                           :count 0
-                           :running? false)
-    :clear          (-> st
-                        (command :reset)
-                        (assoc :board (mapv (constantly false) (range 10000))))
-    :next           (do-next st)
-    :previous       (do-previous st)
-    {:delay x}      (assoc st :delay x)
-    {:keep x}       (assoc st :keep x)
-    {:throttle x}   (assoc st :throttle x)
-    {:click [x y]}  (do-click st x y)
-    :else           (do
-                      (js/console.error "Command not implemented: " cmd)
-                      st)))
+         {:start st-ref} (do-start st-ref)
+         :stop           (assoc st :running? false)
+         :reset          (assoc st
+                                :board (:initial-board st)
+                                :history []
+                                :count 0
+                                :running? false)
+         :clear          (-> st
+                             (command :reset)
+                             (assoc :board (mapv (constantly false) (range 10000))))
+         :next           (do-next st)
+         :previous       (do-previous st)
+         {:delay x}      (assoc st :delay x)
+         {:keep x}       (assoc st :keep x)
+         {:throttle x}   (assoc st :throttle x)
+         {:click [x y]}  (do-click st x y)
+         :else           (do
+                           (js/console.error "Command not implemented: " cmd)
+                           st)))
 
 (defn ui-button [icon on-click & [inactive?]]
   (when-not inactive?
@@ -130,7 +130,7 @@
   as they wish. Clients should call the :clean-up function on a r/with-let finally clause"
   [f initial-board {:keys [delay throttle keep cell-renderer]
                     :or   {delay 200 throttle 0 keep 100
-                           cell-renderer (fn [x] (if x "#320" "#efeae9"))}}]
+                           cell-renderer (fn [x] (if x "hsl(40, 50%, 20%)" "hsl(40, 10%, 90%)"))}}]
   (let
     [throttle (max 0 (or throttle 0))
      state    (r/atom {:initial-board initial-board
