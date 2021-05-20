@@ -1,5 +1,5 @@
 (ns cel-aut.automatas
-  "Automatas"
+  "Collection of sample automatas"
   (:require
    [clojure.core.match :refer-macros [match]]))
 
@@ -105,7 +105,7 @@
                            :down  (if v "hsl(180, 50%, 30%)" "hsl(180, 80%, 50%)")
                            :left  (if v "hsl(240, 50%, 30%)" "hsl(240, 80%, 50%)"))
          false nil
-         :else "black"))
+         :else "hsl(40, 20%, 20%)"))
 
 (def automatas
   [{:name "Conway Game of Life"

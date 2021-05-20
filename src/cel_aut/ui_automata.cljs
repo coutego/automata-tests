@@ -70,7 +70,7 @@
          :stop           (assoc st :running? false)
          :reset          (assoc st
                                 :board (:initial-board st)
-                                :history (h/history)
+                                :history (h/init (:initial-board st))
                                 :count 0
                                 :running? false)
          :clear          (-> st
@@ -149,7 +149,7 @@
                          :delay         (max 0 (or delay 0))
                          :keep          (max 0 (or keep 0))
                          :throttle      throttle
-                         :history       (h/history)
+                         :history       (h/init initial-board)
                          :info-visible? false})
        _        (add-watch
                  state

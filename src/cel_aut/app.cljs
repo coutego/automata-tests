@@ -5,7 +5,7 @@
    [cel-aut.automatas :as as]
    [reagent.dom :as d]))
 
-(defn- automata [a]
+(defn- ui-automata-section [a]
   [:div
    [:h2 (:name a)]
    [ui-a/ui-automata (:f a) (:initial-state a)
@@ -14,7 +14,7 @@
       (when-let [d (:cell-renderer a)]
         {:cell-renderer d}))]])
 
-(defn- separator [acc n]
+(defn- separator-reducer [acc n]
   (-> acc
       (conj [:div.ui.divider {:style {:margin-top :3rem}}])
       (conj n)))
@@ -31,8 +31,8 @@
                    :text-decoration :none}}
        [:i.ui.github.small.icon]]]
      (->> as/automatas
-          (map automata)
-          (reduce separator))
+          (map ui-automata-section)
+          (reduce separator-reducer))
      [:div {:style {:margin-top :2rem :opacity "0%"}} " - "]]]])
 
 (defn mount-root []
