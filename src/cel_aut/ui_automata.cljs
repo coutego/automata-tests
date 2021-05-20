@@ -96,9 +96,7 @@
     :disabled (if inactive? :true :false)
     :style {:background-color "hsl(40 20% 85%)"
             :cursor (if inactive? :default :pointer)
-            :color (if inactive? "hsl(40 20% 65%)" "hsl(40 20% 25%)")}}
-
-
+            :color (if inactive? "hsl(40 20% 75%)" "hsl(40 20% 25%)")}}
    [:i.icon {:class icon}]])
 
 (defn- ui-input [label val on-click & [disabled?]]
@@ -165,17 +163,17 @@
 
      :ui-undo-button
      (fn []
-       [ui-button
-        "undo"
-        #(swap! state command :undo)
-        (:running? @state)])
+      [ui-button
+       "undo"
+       #(swap! state command :undo)
+       (or (:running? @state) (not (h/can-undo? (:history @state))))])
 
      :ui-redo-button
      (fn []
        [ui-button
         "redo"
         #(swap! state command :redo)
-        (:running? @state)])
+        (or (:running? @state) (not (h/can-redo? (:history @state))))])
 
      :ui-next-button
      (fn []
@@ -214,20 +212,20 @@
         (h/pos (:history @state)) (fn []) true])
 
      :ui-board
-     [:div
-      {
-       :style {:padding          "7px 6px 1px 7px"
-               :border-radius    :0.3rem
-               :border           "1px solid hsl(40 50% 90%)"
-               :background-color "hsl(40 20% 98.5%)"
-               :box-shadow       "0 0 10px hsl(40 10% 82%)"}}
-      [:canvas
-       {:on-mouse-up #(swap! state command {:click [(-> % .-pageX) (-> % .-pageY)]})
-        :width       500
-        :height      500
-        :ref         (fn [el] (swap! state assoc :canvas el))
-        :style       {:background-color "hsl(40 20% 95%)"
-                      :width            :100%}}]]
+     (fn []
+       [:div
+        {:style {:padding          "7px 6px 1px 7px"
+                 :border-radius    :0.3rem
+                 :border           "1px solid hsl(40 50% 90%)"
+                 :background-color "hsl(40 20% 98.5%)"
+                 :box-shadow       "0 0 10px hsl(40 10% 82%)"}}
+        [:canvas
+         {:on-mouse-up #(swap! state command {:click [(-> % .-pageX) (-> % .-pageY)]})
+          :width       500
+          :height      500
+          :ref         (fn [el] (swap! state assoc :canvas el))
+          :style       {:background-color "hsl(40 20% 95%)"
+                        :width            :100%}}]])
 
      :running?      (fn [] (:running? @state))
      :generation    (fn [] (:count @state))
@@ -256,7 +254,7 @@
      (gen-ui-automata-components f initial-board opts)]
 
     [:<>
-     ui-board
+     [ui-board]
      [:div {:style {:margin :1rem}}]
      [:div.ui.buttons
       [ui-start-button] [ui-next-button] [ui-undo-button] [ui-redo-button]

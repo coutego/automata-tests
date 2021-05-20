@@ -53,7 +53,7 @@
 (defn can-undo?
   "Can this history be undone?"
   [h]
-  (> (:current h) 0))
+  (> (:current h) 1))
 
 (defn can-redo?
   "Can this history be undone?"
