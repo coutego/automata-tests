@@ -23,9 +23,10 @@
 
 (defn do-next [st]
   (-> st
-      (update :history h/push (:board st))
       (update :count inc)
-      (update :board (:f st))))
+      (update :board (:f st))
+      (as-> it
+        (update it :history h/push (:board it)))))
 
 (defn- do-redo [st]
   (-> st
@@ -75,7 +76,8 @@
                                 :running? false)
          :clear          (-> st
                              (command :reset)
-                             (assoc :board (mapv (constantly false) (range 10000))))
+                             (assoc :board (mapv (constantly false) (range 10000)))
+                             (as-> it (assoc it :history (h/init (:board it)))))
          :next           (do-next st)
          :undo           (do-undo st)
          :redo           (do-redo st)
@@ -162,11 +164,18 @@
          [ui-button "pause circle" #(swap! state command :stop)]
          [ui-button "play circle" #(do-start state)]))
 
-     :ui-prev-button
+     :ui-undo-button
      (fn []
        [ui-button
-        "step backward"
+        "undo"
         #(swap! state command :undo)
+        (:running? @state)])
+
+     :ui-redo-button
+     (fn []
+       [ui-button
+        "redo"
+        #(swap! state command :redo)
         (:running? @state)])
 
      :ui-next-button
@@ -203,7 +212,7 @@
      :ui-generation-input
      (fn []
        [ui-input "Generation"
-        (:count @state) #(swap! state command {:count %}) true])
+        (h/pos (:history @state)) (fn []) true])
 
      :ui-board
      [:div
@@ -241,16 +250,17 @@
                            cell-renderer (fn [x] (if x "#420" "#faeaea"))}
                     :as opts}]
   (r/with-let
-    [{:keys [ui-board ui-start-button ui-prev-button ui-next-button ui-reset-button
-             ui-clear-button info-visible? ui-delay-input ui-throttle-input
-             ui-undo-input ui-generation-input ui-info-button clean-up]}
+    [{:keys [ui-board ui-start-button ui-undo-button ui-redo-button ui-next-button
+             ui-reset-button ui-clear-button info-visible? ui-delay-input
+             ui-throttle-input ui-undo-input ui-generation-input ui-info-button
+             clean-up]}
      (gen-ui-automata-components f initial-board opts)]
 
     [:<>
      ui-board
      [:div {:style {:margin :1rem}}]
      [:div.ui.buttons
-      [ui-start-button] [ui-prev-button] [ui-next-button] [ui-reset-button] [ui-clear-button]]
+      [ui-start-button] [ui-next-button] [ui-undo-button] [ui-redo-button] [ui-reset-button] [ui-clear-button]]
      [:span {:style {:margin-left :0.5rem}}]
      [ui-info-button]
      (when (info-visible?)
@@ -258,6 +268,5 @@
         [:div.ui.form
          [:div.fields
           [ui-delay-input] [ui-throttle-input] [ui-undo-input] [ui-generation-input]]]])
-     ;  [:span "Generation: " [generation]]]]
      [:div {:style {:margin :0.4rem}}]]
     (finally (clean-up))))

@@ -38,6 +38,18 @@
   (let [{:keys [elements current]} h]
     (last (take current elements))))
 
+(defn up-to-head
+  "Returns the history, up to the current element (i.e. the ones after the current
+  position are not included in the retured history)"
+  [h]
+  (let [{:keys [elements current]} h]
+    (take current elements)))
+
+(defn pos
+  "Return the number of elements in the history, up to the current element"
+  [h]
+  (:current h))
+
 (defn can-undo?
   "Can this history be undone?"
   [h]
