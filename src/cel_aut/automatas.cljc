@@ -1,8 +1,7 @@
-(ns cel-aut.core
+(ns cel-aut.automatas
+  "Automatas"
   (:require
-   [cel-aut.automata :as aut]
-   [clojure.core.match :refer-macros [match]]
-   [reagent.dom :as d]))
+   [clojure.core.match :refer-macros [match]]))
 
 ;; Initial random state. It's a value instead of a fn so reset restores the
 ;; original state
@@ -108,25 +107,14 @@
          false nil
          :else "black"))
 
-(defn home-page []
-  [:<>
-   [:div
-    {:style {:max-width :600px :margin-left :3% :margin-right :3% :margin-bottom :2rem :align :center}}
-    [:div.ui.container
-     [:h1 "Cellular automata tests"]
-     [:h2 "Conway"]
-     [aut/ui-automata conway initial-state-rand {:delay 0 :throttle 32 :keep 100}]
-     [:h2 "Parity"]
-     [aut/ui-automata parity initial-state-e {:delay 200 :throttle 32 :keep 1000}]
-     [:h2 "Ant"]
-     [aut/ui-automata ant initial-state-ant
-      {:delay 200 :throttle 32 :keep 1000 :cell-renderer ant-drawer}]
-
-     [:div {:style {:margin-top :2rem :opacity "0%"}} " - "]]]])
-
-
-(defn mount-root []
-  (d/render [home-page] (.getElementById js/document "app")))
-
-(defn ^:export init! []
-  (mount-root))
+(def automatas
+  [{:name "Conway Game of Life"
+    :f conway
+    :initial-state initial-state-rand}
+   {:name "Replicating"
+    :f parity
+    :initial-state initial-state-e}
+   {:name "Langton Ant"
+    :f ant
+    :initial-state initial-state-ant
+    :drawer ant-drawer}])

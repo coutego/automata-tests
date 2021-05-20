@@ -1,9 +1,10 @@
-(ns cel-aut.automata
+(ns cel-aut.ui-automata
   "Cellular automata reagent component"
   (:require
    [goog.async.nextTick]
    [goog.functions :as gf]
    [reagent.core :as r]
+   [cel-aut.history :as h]
    [clojure.core.match :refer-macros [match]]))
 
 (defn- paint-cell [n val ctx cell-renderer]
@@ -22,20 +23,19 @@
 
 (defn do-next [st]
   (-> st
-      (update :history conj (:board st))
-      (update :history (comp vec #(drop (- (count %) (:keep st)) %)))
+      (update :history h/push (:board st))
       (update :count inc)
       (update :board (:f st))))
 
-(defn- do-previous [st]
+(defn- do-redo [st]
   (-> st
-      (update :history (comp vec butlast))
-      (as-> it
-          (if-let [prev (last (:history st))]
-            (-> it
-                (assoc :board prev)
-                (update :count dec))
-            it))))
+      (update :history h/redo)
+      (as-> it (assoc it :board (h/head (:history it))))))
+
+(defn- do-undo [st]
+  (-> st
+      (update :history h/undo)
+      (as-> it (assoc it :board (h/head (:history it))))))
 
 (defn- -do-start [st-ref]
   (let [del (max 0 (or (:delay @st-ref) 0))
@@ -60,7 +60,9 @@
         y      (quot (* ratio (- y el-y)) 5)
         p      (+ (* 100 x) y)]
     (-> st
-        (update-in [:board p] not))))
+        (update-in [:board p] not)
+        (as-> it
+          (update it :history (fn [hi] (h/push hi (:board it))))))))
 
 (defn command [st cmd]
   (match cmd
@@ -68,14 +70,15 @@
          :stop           (assoc st :running? false)
          :reset          (assoc st
                                 :board (:initial-board st)
-                                :history []
+                                :history (h/history)
                                 :count 0
                                 :running? false)
          :clear          (-> st
                              (command :reset)
                              (assoc :board (mapv (constantly false) (range 10000))))
          :next           (do-next st)
-         :previous       (do-previous st)
+         :undo           (do-undo st)
+         :redo           (do-redo st)
          {:delay x}      (assoc st :delay x)
          {:keep x}       (assoc st :keep x)
          {:throttle x}   (assoc st :throttle x)
@@ -146,7 +149,7 @@
                          :delay         (max 0 (or delay 0))
                          :keep          (max 0 (or keep 0))
                          :throttle      throttle
-                         :history       []
+                         :history       (h/history)
                          :info-visible? false})
        _        (add-watch
                  state
@@ -163,7 +166,7 @@
      (fn []
        [ui-button
         "step backward"
-        #(swap! state command :previous)
+        #(swap! state command :undo)
         (:running? @state)])
 
      :ui-next-button
