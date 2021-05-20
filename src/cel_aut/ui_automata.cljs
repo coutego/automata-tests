@@ -91,16 +91,15 @@
                            st)))
 
 (defn ui-button [icon on-click & [inactive?]]
-  (when-not inactive?
-    [:div.ui.icon.button
-     {:on-click (if inactive? #() on-click)
-      :class (when inactive? "basic")
-      :disabled (if inactive? :true :false)
-      :style {:background-color "hsl(40 20% 85%)"
-              :visibility (when inactive? :hidden)}}
+  [:div.ui.icon.button
+   {:on-click (if inactive? #() on-click)
+    :disabled (if inactive? :true :false)
+    :style {:background-color "hsl(40 20% 85%)"
+            :cursor (if inactive? :default :pointer)
+            :color (if inactive? "hsl(40 20% 65%)" "hsl(40 20% 25%)")}}
 
 
-     [:i.icon {:class icon}]]))
+   [:i.icon {:class icon}]])
 
 (defn- ui-input [label val on-click & [disabled?]]
   [:div.field
@@ -260,7 +259,8 @@
      ui-board
      [:div {:style {:margin :1rem}}]
      [:div.ui.buttons
-      [ui-start-button] [ui-next-button] [ui-undo-button] [ui-redo-button] [ui-reset-button] [ui-clear-button]]
+      [ui-start-button] [ui-next-button] [ui-undo-button] [ui-redo-button]
+      [ui-reset-button] [ui-clear-button]]
      [:span {:style {:margin-left :0.5rem}}]
      [ui-info-button]
      (when (info-visible?)
