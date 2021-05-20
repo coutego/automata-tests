@@ -8,7 +8,11 @@
 (defn- automata [a]
   [:div
    [:h2 (:name a)]
-   [ui-a/ui-automata (:f a) (:initial-state a) {:delay 0 :throttle 16 :keep 100}]])
+   [ui-a/ui-automata (:f a) (:initial-state a)
+    (into
+      {:delay 0 :throttle 16 :keep 100}
+      (when-let [d (:cell-renderer a)]
+        {:cell-renderer d}))]])
 
 (defn- separator [acc n]
   (-> acc
@@ -20,7 +24,12 @@
    [:div
     {:style {:max-width :600px :margin-left :3% :margin-right :3% :margin-bottom :2rem :align :center}}
     [:div.ui.container
-     [:h1 "Cellular automata tests"]
+     [:h1 "Cellular automata tests "
+      [:a {:href "https://github.com/pedroabelleira/automata-tests"
+           :target :blank
+           :style {:color "hsl(40, 10%, 60%)"
+                   :text-decoration :none}}
+       [:i.ui.github.small.icon]]]
      (->> as/automatas
           (map automata)
           (reduce separator))

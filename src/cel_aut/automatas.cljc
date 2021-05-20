@@ -111,10 +111,12 @@
   [{:name "Conway Game of Life"
     :f conway
     :initial-state initial-state-rand}
+
    {:name "Replicating"
     :f parity
     :initial-state initial-state-e}
+
    {:name "Langton Ant"
     :f ant
     :initial-state initial-state-ant
-    :drawer ant-drawer}])
+    :cell-renderer ant-drawer}])
