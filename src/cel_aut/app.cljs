@@ -10,7 +10,7 @@
    [:h2 (:name a)]
    [ui-a/ui-automata (:f a) (:initial-state a)
     (into
-      {:delay 0 :throttle 16 :keep 100}
+      {:delay 50 :throttle 16 :keep 100}
       (when-let [d (:cell-renderer a)]
         {:cell-renderer d}))]])
 
@@ -22,7 +22,8 @@
 (defn home-page []
   [:<>
    [:div
-    {:style {:max-width :600px :margin-left :3% :margin-right :3% :margin-bottom :2rem :align :center}}
+    {:style {:max-width :600px :margin-left :3% :margin-right :3%
+             :margin-bottom :2rem :align :center}}
     [:div.ui.container
      [:h1 "Cellular automata tests "
       [:a {:href "https://github.com/pedroabelleira/automata-tests"
