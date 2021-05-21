@@ -235,7 +235,8 @@
           :height      500
           :ref         (fn [el] (swap! state assoc :canvas el))
           :style       {:background-color "hsl(40 20% 95%)"
-                        :width            :100%}}]])
+                        :width            :100%
+                        :cursor           :crosshair}}]])
 
      :running?      (fn [] (:running? @state))
      :generation    (fn [] (:count @state))
