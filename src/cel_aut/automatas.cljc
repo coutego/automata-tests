@@ -83,16 +83,16 @@
   "Calculates the next state from a given one for the Langton ant algorith"
   [st]
   (let [[x y {:keys [v dir]}] (find-ant st)
-        ndir (case dir
-               :up (if v :left :right)
-               :right (if v :up :down)
-               :down (if v :left :right)
-               :left (if v :down :up))
-        [nx ny] (case ndir
-                  :up [(dec x) y]
-                  :right [x (inc y)]
-                  :down [(inc x) y]
-                  :left [x (dec y)])]
+        ndir                  (case dir
+                                :up    (if v :left :right)
+                                :right (if v :up :down)
+                                :down  (if v :right :left)
+                                :left  (if v :down :up))
+        [nx ny]               (case ndir
+                                :up    [(dec x) y]
+                                :right [x (inc y)]
+                                :down  [(inc x) y]
+                                :left  [x (dec y)])]
     (-> st
         (assoc (+ y (* 100 x)) (not v))
         (update (+ ny (* 100 nx)) (fn [v] {:v v :dir ndir})))))
