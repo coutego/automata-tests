@@ -1,11 +1,13 @@
 (ns cel-aut.automatas
   "Collection of sample automatas"
   (:require
-   [clojure.core.match :refer-macros [match]]))
+   #?(:clj  [clojure.core.match :refer [match]]
+      :cljs [clojure.core.match :refer-macros [match]])))
+
 
 ;; Initial random state. It's a value instead of a fn so reset restores the
 ;; original state
-(def initial-state-rand (mapv #(< (rand-int 10) 3) (range 10000)))
+(def initial-state-rand (mapv (fn [_] (< (rand-int 10) 3)) (range 10000)))
 
 ;; Letter 'E' state
 (def initial-state-e
@@ -24,7 +26,7 @@
   [state x y]
   (let [x (mod x 100)
         y (mod y 100)]
-    (get state (+ y (* 100 x)))))
+    (if (get state (+ y (* 100 x))) 1 0)))
 
 (defn neighbourgs
   "Sum of the neighbourgs of a cell"
@@ -117,3 +119,12 @@
     :f ant
     :initial-state initial-state-ant
     :cell-renderer ant-drawer}])
+
+(defn benchmark [aut]
+  (let [is (:initial-state aut)
+        f  (:f aut)]
+    (time
+     (loop [i 0
+            st is]
+       (when (< i 1000)
+         (recur (inc i) (f st)))))))
