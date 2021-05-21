@@ -5,7 +5,6 @@
   "Drops elements from the history if needed (to limit history to :keep elements)"
   [h]
   (let [ex (dec (- (count (:elements h)) (:keep h)))]
-    (println "ex = " ex)
     (if (> ex 0)
       (-> h
           (update :current - ex)
