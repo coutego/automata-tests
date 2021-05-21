@@ -10,13 +10,13 @@
    [:h2 (:name a)]
    [ui-a/ui-automata (:f a) (:initial-state a)
     (into
-      {:delay 50 :throttle 16 :keep 100}
-      (when-let [d (:cell-renderer a)]
-        {:cell-renderer d}))]])
+     {:delay 50 :throttle 16 :keep 100}
+     (when-let [d (:cell-renderer a)]
+       {:cell-renderer d}))]])
 
 (defn- separator-reducer [acc n]
   (-> acc
-      (conj [:div.ui.divider {:style {:margin-top :3rem}}])
+      (conj [:div.ui.divider {:style {:margin-top :3rem :margin-bottom :0.5rem}}])
       (conj n)))
 
 (defn home-page []
