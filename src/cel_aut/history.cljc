@@ -81,3 +81,8 @@
   "Return the number of elements pushed into the history, not including those dropped"
   [h]
   (:current h))
+
+(defn reset
+  "Resets the history, elminating the elements, but keeping the number of max elements keep"
+  [h]
+  (assoc h :elements [] :current 0 :total 0))

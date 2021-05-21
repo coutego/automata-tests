@@ -65,25 +65,33 @@
         (as-> it
           (update it :history (fn [hi] (h/push hi (:board it))))))))
 
+(defn- do-reset[st]
+  (-> st
+      (assoc :board (:initial-board st)
+             :count 0
+             :running? false)
+      (update :history h/reset)
+      (update :history h/push (:initial-board st))))
+
+(defn- do-clear [st]
+  (let [b (mapv (constantly false) (range 10000))]
+    (-> st
+        do-reset
+        (assoc :board b)
+        (update :history h/reset)
+        (update :history h/push b))))
+
 (defn command [st cmd]
   (match cmd
          {:start st-ref} (do-start st-ref)
          :stop           (assoc st :running? false)
-         :reset          (assoc st
-                                :board (:initial-board st)
-                                :history (h/init (:keep st) (:initial-board st))
-                                :count 0
-                                :running? false)
-         :clear          (-> st
-                             (command :reset)
-                             (assoc :board (mapv (constantly false) (range 10000)))
-                             (as-> it (assoc it :history (h/init (:board it)))))
+         :reset          (do-reset st)
+         :clear          (do-clear st)
          :next           (do-next st)
          :undo           (do-undo st)
          :redo           (do-redo st)
          {:delay x}      (assoc st :delay x)
-         {:keep x}       (do (assoc-in st [:history :keep] x)
-                             (assoc st keep x))
+         {:keep x}       (assoc-in st [:history :keep] x)
          {:throttle x}   (assoc st :throttle x)
          {:click [x y]}  (do-click st x y)
          :toggle-info    (update st :info-visible? not)
