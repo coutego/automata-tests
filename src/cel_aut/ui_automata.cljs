@@ -71,7 +71,7 @@
          :stop           (assoc st :running? false)
          :reset          (assoc st
                                 :board (:initial-board st)
-                                :history (h/init (:initial-board st))
+                                :history (h/init (:keep st) (:initial-board st))
                                 :count 0
                                 :running? false)
          :clear          (-> st
@@ -82,7 +82,8 @@
          :undo           (do-undo st)
          :redo           (do-redo st)
          {:delay x}      (assoc st :delay x)
-         {:keep x}       (assoc st :keep x)
+         {:keep x}       (do (assoc-in st [:history :keep] x)
+                             (assoc st keep x))
          {:throttle x}   (assoc st :throttle x)
          {:click [x y]}  (do-click st x y)
          :toggle-info    (update st :info-visible? not)
@@ -94,9 +95,9 @@
   [:div.ui.icon.button
    {:on-click (if inactive? #() on-click)
     :disabled (if inactive? :true :false)
-    :style {:background-color "hsl(40 20% 85%)"
-            :cursor (if inactive? :default :pointer)
-            :color (if inactive? "hsl(40 20% 75%)" "hsl(40 20% 25%)")}}
+    :style    {:background-color "hsl(40 20% 85%)"
+               :cursor           (if inactive? :default :pointer)
+               :color            (if inactive? "hsl(40 20% 75%)" "hsl(40 20% 25%)")}}
    [:i.icon {:class icon}]])
 
 (defn- ui-input [label val on-click & [disabled?]]
@@ -138,6 +139,7 @@
                            cell-renderer (fn [x] (if x "hsl(40, 50%, 20%)" "hsl(40, 10%, 90%)"))}}]
   (let
       [throttle (max 0 (or throttle 0))
+       keep     (max 0 (or keep 0))
        state    (r/atom {:initial-board initial-board
                          :f             f
                          :board         initial-board
@@ -145,10 +147,10 @@
                          :renderer      (make-renderer throttle)
                          :running?      false
                          :count         0
+                         :keep          keep
                          :delay         (max 0 (or delay 0))
-                         :keep          (max 0 (or keep 0))
                          :throttle      throttle
-                         :history       (h/init initial-board)
+                         :history       (h/init keep initial-board)
                          :info-visible? false})
        _        (add-watch
                  state
@@ -163,10 +165,10 @@
 
      :ui-undo-button
      (fn []
-      [ui-button
-       "undo"
-       #(swap! state command :undo)
-       (or (:running? @state) (not (h/can-undo? (:history @state))))])
+       [ui-button
+        "undo"
+        #(swap! state command :undo)
+        (or (:running? @state) (not (h/can-undo? (:history @state))))])
 
      :ui-redo-button
      (fn []
@@ -204,12 +206,12 @@
      :ui-undo-input
      (fn []
        [ui-input "Undo levels"
-        (:keep @state) #(swap! state command {:keep %})])
+        (-> @state :history :keep) #(swap! state command {:keep %})])
 
      :ui-generation-input
      (fn []
        [ui-input "Generation"
-        (h/pos (:history @state)) (fn []) true])
+        (h/total (:history @state)) (fn []) true])
 
      :ui-board
      (fn []
