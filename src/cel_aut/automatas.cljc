@@ -68,16 +68,13 @@
   [state]
   (into [] (map-indexed (fn [n _] (parity-xy n state)) state)))
 
-(defn- tap-> [kw v] (tap> {kw v}) v)
-
 (defn- find-ant [st]
-  (tap-> :find-ant
-         (reduce (fn [acc n]
-                   (if (map? n)
-                     (reduced [(quot acc 100) (rem acc 100) n])
-                     (inc acc)))
-                 0
-                 st)))
+  (reduce (fn [acc n]
+            (if (map? n)
+              (reduced [(quot acc 100) (rem acc 100) n])
+              (inc acc)))
+          0
+          st))
 
 (defn ant
   "Calculates the next state from a given one for the Langton ant algorith"
