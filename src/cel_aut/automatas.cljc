@@ -4,10 +4,18 @@
    #?(:clj  [clojure.core.match :refer [match]]
       :cljs [clojure.core.match :refer-macros [match]])))
 
+(def initial-state-rand-arr
+  (let [a (js/Array. 9999)]
+    (loop [i 10000]
+      (when-not (< i 0)
+        (aset a i (< (rand-int 10) 3))
+        (recur (dec i))))
+    a))
 
 ;; Initial random state. It's a value instead of a fn so reset restores the
 ;; original state
-(def initial-state-rand (mapv (fn [_] (< (rand-int 10) 3)) (range 10000)))
+;(def initial-state-rand (mapv (fn [_] (< (rand-int 10) 3)) (range 10000)))
+(def initial-state-rand (into [] initial-state-rand-arr))
 
 ;; Letter 'E' state
 (def initial-state-e
@@ -58,6 +66,15 @@
   "Calculates the next state from a given one for the Conway algorithm"
   [state]
   (into [] (map-indexed (fn [n v] (conway-xy n v state)) state)))
+
+(defn conway-arr
+  "Calculates the next state from a given one for the Conway algorithm"
+  [state]
+  (let [ret (js/Array. 10000)]
+    (dorun
+     (for [i (range 10000)]
+       (aset ret i (conway-xy i (aget state i) state))))
+    ret))
 
 (defn parity-xy
   "Calculates the value of the cell at x y on the next generation for the parity
@@ -111,6 +128,10 @@
     :f conway
     :initial-state initial-state-rand}
 
+   {:name "Conway Game of Life (Array)"
+    :f conway-arr
+    :initial-state initial-state-rand-arr}
+
    {:name "Replicating"
     :f parity
     :initial-state initial-state-e}
@@ -123,8 +144,9 @@
 (defn benchmark [aut]
   (let [is (:initial-state aut)
         f  (:f aut)]
-    (time
-     (loop [i 0
-            st is]
-       (when (< i 1000)
-         (recur (inc i) (f st)))))))
+    (with-out-str
+      (time
+       (loop [i 0
+              st is]
+         (when (< i 1000)
+           (recur (inc i) (f st))))))))
