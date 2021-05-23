@@ -45,7 +45,11 @@
   (can-redo? [_]
     "Returns true is there are actions to redo, false otherwise")
   (can-undo? [_]
-    "Returns true is there are actions to undo, false otherwise"))
+    "Returns true is there are actions to undo, false otherwise")
+  (undo-levels [_]
+    "Returns the number of undo levels in the history")
+  (set-undo-levels [_ n]
+    "Changes the level of undo-levels in the history to n"))
 
 (defrecord Automata
     [f state cell-states init-st blank-st
@@ -91,11 +95,17 @@
     (-> a :history h/can-redo?))
   (can-undo? [a]
     (-> a :history h/can-undo?))
+  (undo-levels [a]
+    (-> a :history :keep))
+  (set-undo-levels [a n]
+    (let [n (max 0 (int n))]
+      (-> a
+          (update-in [:history :keep] n)))))
 
-  IDrawable
-  (formats [_] formats)
-  (drawable [_] (to-drawable-fn))
-  (drawable [a fmt] (drawable a)))
+IDrawable
+(formats [_] formats)
+(drawable [_] (to-drawable-fn))
+(drawable [a fmt] (drawable a)) ; FIXME
 
 (defn create-automata
   "Creates an automata from the given parameters.
