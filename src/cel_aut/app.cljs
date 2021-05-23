@@ -34,12 +34,6 @@
      (->> as/automatas
           (map ui-automata-section)
           (reduce separator-reducer))
-     [:div {:style {:margin-top :2rem :opacity "0%"}} " - "]
-     [:h2 "Benchmarks"]
-     (into [:<>]
-           (map
-            (fn [a] [:div (:name a) ": " (as/benchmark a)])
-            as/automatas))
      [:div {:style {:margin-top :2rem :opacity "0%"}} " - "]]]])
 
 (defn mount-root []
