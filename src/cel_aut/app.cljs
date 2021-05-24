@@ -8,11 +8,7 @@
 (defn- ui-automata-section [a]
   [:div
    [:h2 (:name a)]
-   [ui-a/ui-automata (:f a) (:initial-state a)
-    (into
-     {:delay 50 :throttle 16 :keep 100}
-     (when-let [d (:cell-renderer a)]
-       {:cell-renderer d}))]])
+   [ui-a/ui-automata a {:delay 50 :throttle 16}]])
 
 (defn- separator-reducer [acc n]
   (-> acc
@@ -31,9 +27,11 @@
            :style {:color "hsl(40, 10%, 60%)"
                    :text-decoration :none}}
        [:i.ui.github.small.icon]]]
-     (->> as/automatas
+
+     (->> as/automatas-model
           (map ui-automata-section)
           (reduce separator-reducer))
+
      [:div {:style {:margin-top :2rem :opacity "0%"}} " - "]]]])
 
 (defn mount-root []

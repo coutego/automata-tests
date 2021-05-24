@@ -1,48 +1,33 @@
 (ns cel-aut.ui-automata
   "Cellular automata reagent component"
   (:require
+   [cel-aut.model.automata :as aut]
+   [clojure.core.match :refer-macros [match]]
    [goog.async.nextTick]
    [goog.functions :as gf]
-   [reagent.core :as r]
-   [cel-aut.history :as h]
-   [clojure.core.match :refer-macros [match]]))
+   [reagent.core :as r]))
 
-(defn- paint-cell [n val ctx cell-renderer]
-  (let [x     (* 5 (quot n 100))
-        y     (* 5 (rem n 100))
-        color (cell-renderer val)]
-    (set! (.-fillStyle ctx) (or color "hsl(40, 10%, 90%)"))
-    (.fillRect ctx x y 4 4)))
+(defn- paint-cell [cols n val render-fn ctx]
+  (let [x     (* 10 (quot n cols))
+        y     (* 10 (rem n cols))
+        color (try (render-fn val) (catch :default e (println "Error: " e)))]
+    (set! (.-fillStyle ctx) (or color "hsl(40, 10%, 10%)"))
+    (.fillRect ctx x y 9 9)))
 
 (defn- paint-board [st]
   (when-let [ctx (some-> (:canvas st) (.getContext "2d"))]
-    (.clearRect ctx 0 0 500 500)
-    (let [cr (:cell-renderer st)
-          b  (:board st)]
-      (dorun (map-indexed (fn [n val] (paint-cell n val ctx cr)) b)))))
-
-(defn do-next [st]
-  (-> st
-      (update :count inc)
-      (update :board (:f st))
-      (as-> it
-        (update it :history h/push (:board it)))))
-
-(defn- do-redo [st]
-  (-> st
-      (update :history h/redo)
-      (as-> it (assoc it :board (h/head (:history it))))))
-
-(defn- do-undo [st]
-  (-> st
-      (update :history h/undo)
-      (as-> it (assoc it :board (h/head (:history it))))))
+    (.clearRect ctx 0 0 1000 1000)
+    (let [a         (:automata st)
+          render-fn (aut/renderer a)
+          cols      (-> a aut/geometry :cols)]
+      (dorun (map-indexed (fn [n val] (paint-cell cols n val render-fn ctx))
+                          (:state a))))))
 
 (defn- -do-start [st-ref]
   (let [del (max 0 (or (:delay @st-ref) 0))
         f   (fn []
               (when (:running? @st-ref)
-                (swap! st-ref do-next true)
+                (swap! st-ref (fn [s] (update s :automata aut/next-gen)))
                 (-do-start st-ref)))]
     (if (> del 0)
       (js/setTimeout f del)
@@ -57,41 +42,24 @@
         el-x   (+ (.-offsetLeft canvas) (.-clientLeft canvas))
         el-y   (+ (.-offsetTop canvas) (.-clientTop canvas))
         ratio  (/ (.-width canvas) (.-clientWidth canvas))
-        x      (quot (* ratio (- x el-x)) 5)
-        y      (quot (* ratio (- y el-y)) 5)
-        p      (+ (* 100 x) y)]
-    (-> st
-        (update-in [:board p] not)
-        (as-> it
-          (update it :history (fn [hi] (h/push hi (:board it))))))))
-
-(defn- do-reset[st]
-  (-> st
-      (assoc :board (:initial-board st)
-             :count 0
-             :running? false)
-      (update :history h/reset)
-      (update :history h/push (:initial-board st))))
-
-(defn- do-clear [st]
-  (let [b (mapv (constantly false) (range 10000))]
-    (-> st
-        do-reset
-        (assoc :board b)
-        (update :history h/reset)
-        (update :history h/push b))))
+        x      (quot (* ratio (- x el-x)) 10)
+        y      (quot (* ratio (- y el-y)) 10)
+        a      (:automata st)
+        cols   (:cols (aut/geometry a))
+        n      (+ y (* x cols))]
+    (update st :automata #(aut/cycle-cell % n))))
 
 (defn command [st cmd]
   (match cmd
          {:start st-ref} (do-start st-ref)
          :stop           (assoc st :running? false)
-         :reset          (do-reset st)
-         :clear          (do-clear st)
-         :next           (do-next st)
-         :undo           (do-undo st)
-         :redo           (do-redo st)
+         :reset          (update st :automata aut/reset)
+         :clear          (update st :automata aut/clear)
+         :next           (update st :automata aut/next-gen)
+         :undo           (update st :automata aut/undo)
+         :redo           (update st :automata aut/redo)
          {:delay x}      (assoc st :delay x)
-         {:keep x}       (assoc-in st [:history :keep] x)
+         {:keep x}       (update st :automata aut/set-undo-levels x)
          {:throttle x}   (assoc st :throttle x)
          {:click [x y]}  (do-click st x y)
          :toggle-info    (update st :info-visible? not)
@@ -129,7 +97,7 @@
     paint-board))
 
 (defn on-state-change [st o n]
-  (when (or (not= (:board o) (:board n))
+  (when (or (not= (:automata o) (:automata n))
             (not= (:canvas o) (:canvas n)))
     (when-let [r (:renderer n)]
       (r n)))
@@ -142,29 +110,21 @@
   "Function (not reagent component) that creates the model + individual components
   for the automata. Clients can arrange and use the returned components and properties
   as they wish. Clients should call the :clean-up function on a r/with-let finally clause"
-  [f initial-board {:keys [delay throttle keep cell-renderer]
-                    :or   {delay         200 throttle 0 keep 100
-                           cell-renderer (fn [x] (if x "hsl(40, 50%, 20%)" "hsl(40, 10%, 90%)"))}}]
+  [a {:keys [delay throttle]
+      :or   {delay 200 throttle 0}}]
   (let
       [throttle (max 0 (or throttle 0))
-       keep     (max 0 (or keep 0))
-       state    (r/atom {:initial-board initial-board
-                         :f             f
-                         :board         initial-board
-                         :cell-renderer cell-renderer
+       state    (r/atom {:automata      a
                          :renderer      (make-renderer throttle)
                          :running?      false
-                         :count         0
-                         :keep          keep
                          :delay         (max 0 (or delay 0))
                          :throttle      throttle
-                         :history       (h/init keep initial-board)
                          :info-visible? false})
        _        (add-watch
                  state
-                 ::board-watch
+                 ::automata-watch
                  (fn [_ _ o n] (on-state-change state o n)))
-       clean-up (fn [] (remove-watch state ::board-watch))]
+       clean-up (fn [] (remove-watch state ::automata-watch))]
     {:ui-start-button
      (fn []
        (if (:running? @state)
@@ -176,14 +136,14 @@
        [ui-button
         "undo"
         #(swap! state command :undo)
-        (or (:running? @state) (not (h/can-undo? (:history @state))))])
+        (or (:running? @state) (not (aut/can-undo? (:automata @state))))])
 
      :ui-redo-button
      (fn []
        [ui-button
         "redo"
         #(swap! state command :redo)
-        (or (:running? @state) (not (h/can-redo? (:history @state))))])
+        (or (:running? @state) (not (aut/can-redo? (-> @state :automata))))])
 
      :ui-next-button
      (fn []
@@ -214,25 +174,25 @@
      :ui-undo-input
      (fn []
        [ui-input "Undo levels"
-        (-> @state :history :keep) #(swap! state command {:keep %})])
+        (-> @state :automata aut/undo-levels) #(swap! state command {:keep %})])
 
      :ui-generation-input
      (fn []
        [ui-input "Generation"
-        (h/total (:history @state)) (fn []) true])
+        (-> @state :automata aut/total) (fn []) true])
 
      :ui-board
      (fn []
        [:div
-        {:style {:padding          "7px 6px 1px 7px"
+        {:style {:padding          "7px 7px 1px 8px"
                  :border-radius    :0.3rem
                  :border           "1px solid hsl(40 50% 90%)"
                  :background-color "hsl(40 20% 98.5%)"
                  :box-shadow       "0 0 10px hsl(40 10% 82%)"}}
         [:canvas
          {:on-mouse-up #(swap! state command {:click [(-> % .-pageX) (-> % .-pageY)]})
-          :width       500
-          :height      500
+          :width       1000
+          :height      1000
           :ref         (fn [el] (swap! state assoc :canvas el))
           :style       {:background-color "hsl(40 20% 95%)"
                         :width            :100%
@@ -253,16 +213,15 @@
   - `throttle`: time in ms to use when throttling paints (i.e. paints will happen at most
     every that number of ms)
   - `keep`: number of generations to keep in memory as to be able to go to the previous board"
-  [f initial-board {:keys [delay throttle keep cell-renderer]
-                    :or   {delay 200 throttle 0 keep 100
-                           cell-renderer (fn [x] (if x "#420" "#faeaea"))}
-                    :as opts}]
+  [a {:keys [delay throttle cell-renderer]
+      :or   {delay 200 throttle 0}
+      :as opts}]
   (r/with-let
     [{:keys [ui-board ui-start-button ui-undo-button ui-redo-button ui-next-button
              ui-reset-button ui-clear-button info-visible? ui-delay-input
              ui-throttle-input ui-undo-input ui-generation-input ui-info-button
              clean-up]}
-     (gen-ui-automata-components f initial-board opts)]
+     (gen-ui-automata-components a opts)]
 
     [:<>
      [ui-board]

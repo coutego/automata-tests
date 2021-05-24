@@ -1,21 +1,24 @@
 (ns cel-aut.model.automata
-  (:require [cel-aut.history :as h]))
+  (:require [cel-aut.model.history :as h]))
 
 (defprotocol IDrawable
   (formats [_]
     "Returns the list of formats supported by this Drawable. The first on the list is
     the default one")
-  (drawable
+
+  (renderer
     [_]
     [_ fmt]
-    "Returns the drawable for the given format or the for the default one if format
+    "Returns the renderer function for the given format or the for the default one if format
     is not provided.
     The concrete type returned will depend on the format. For the format :2d, the
-    returned drawble is a map with keys :cols :rows :elemens, where :cols and :rows are
-    positive integers and :rows is an array of elements where the first element is the
-    element of the first row and first column, the second element the element in the
-    first row and second column, ..., the 'number of columns + 1' element is the element
-    on the second row and first column, etc"))
+    returned function accepts one parameter corresponding to the number that is defined as
+    p = y + cols * x
+    where x and y are the coordinates of the point")
+  (geometry [_]
+    "Returns the geometry for the given format (or the first one if it's not provided).
+    The meaning of geometry is dependent on the format. For the :2d format the geometry
+    is a map {:rows n1 :cols n2}"))
 
 (defprotocol IAutomata
   (next-gen
@@ -27,7 +30,7 @@
 (defprotocol IEditable
   (cell-states [_]
     "Returns the list of states for a cell, as a vector")
-  (cycle-cell [_ x y]
+  (cycle-cell [_ cell]
     "Cycles the value of the given cell to the next state from the list of
      states, in the given order. The implementation can skip the values that are not
      valid"))
@@ -39,6 +42,8 @@
     "Undos the last action. Does nothing is there are no actions to undo")
   (reset [_]
     "Resets the state to the initial (or default) state")
+  (clear [_]
+    "Resets the state to the blank state")
   (total [_]
     "Returns the total number of generations up to the current one, including
     those not kept in the history")
@@ -52,8 +57,8 @@
     "Changes the level of undo-levels in the history to n"))
 
 (defrecord Automata
-    [f state cell-states init-st blank-st
-     cycle-cell-fn to-drawable-fn formats
+    [name f state cell-states init-st blank-st
+     cycle-cell-fn renderer-fn formats
      history]
   IAutomata
   (next-gen [a]
@@ -73,8 +78,8 @@
   IEditable
   (cell-states [a]
     (:cell-states a))
-  (cycle-cell [a x y]
-    (update a :state cycle-cell-fn x y))
+  (cycle-cell [a cell]
+    (update-in a [:state cell] cycle-cell-fn))
 
   IHistory
   (redo [a]
@@ -88,6 +93,12 @@
   (reset [a]
     (-> a
         (update :history h/reset)
+        (update :history h/push init-st)
+        (as-> it (assoc it :state (h/head (:history it))))))
+  (clear [a]
+    (-> a
+        (update :history h/reset)
+        (update :history h/push blank-st)
         (as-> it (assoc it :state (h/head (:history it))))))
   (total [a]
     (-> a :history h/total))
@@ -100,12 +111,13 @@
   (set-undo-levels [a n]
     (let [n (max 0 (int n))]
       (-> a
-          (update-in [:history :keep] n)))))
+          (update-in [:history :keep] n))))
 
-IDrawable
-(formats [_] formats)
-(drawable [_] (to-drawable-fn))
-(drawable [a fmt] (drawable a)) ; FIXME
+  IDrawable
+  (formats [_] formats)
+  (renderer [_] renderer-fn)
+  (renderer [a fmt] (renderer a)) ; FIXME
+  (geometry [_] {:rows 100 :cols 100})) ; FIXME
 
 (defn create-automata
   "Creates an automata from the given parameters.
@@ -126,14 +138,15 @@ IDrawable
       if not provided
   :undo-levels
       Number of undo levels to keep in the history"
-  [{:keys [f init-st to-drawable-fn blank-st cycle-cell-fn cell-states undo-levels]}]
-  (let [blank-st      (or blank-st init-st)
+  [{:keys [name f init-st renderer-fn blank-st cycle-cell-fn cell-states undo-levels]}]
+  (let [name          (or name "Unknown automata")
+        blank-st      (or blank-st init-st)
         undo-levels   (or undo-levels 0)
         history       (h/init undo-levels init-st)
         formats       [:2d]
         state         init-st
         cell-states   (or cell-states [true false])
         cycle-cell-fn (or cycle-cell-fn identity)]
-    (->Automata f state cell-states init-st blank-st
-                cycle-cell-fn to-drawable-fn formats
+    (->Automata name f state cell-states init-st blank-st
+                cycle-cell-fn renderer-fn formats
                 history)))

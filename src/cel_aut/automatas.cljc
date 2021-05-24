@@ -2,7 +2,8 @@
   "Collection of sample automatas"
   (:require
    #?(:clj  [clojure.core.match :refer [match]]
-      :cljs [clojure.core.match :refer-macros [match]])))
+      :cljs [clojure.core.match :refer-macros [match]])
+   [cel-aut.model.automata :as ma]))
 
 (def initial-state-rand-arr
   (let [a (js/Array. 9999)]
@@ -123,23 +124,40 @@
          false nil
          :else "hsl(40, 20%, 20%)"))
 
-(def automatas
-  [{:name "Conway Game of Life"
-    :f conway
-    :initial-state initial-state-rand}
-
-   {:name "Conway Game of Life (Array)"
-    :f conway-arr
-    :initial-state initial-state-rand-arr}
-
-   {:name "Replicating"
-    :f parity
-    :initial-state initial-state-e}
-
-   {:name "Langton Ant"
-    :f ant
-    :initial-state initial-state-ant
-    :cell-renderer ant-drawer}])
+(def automatas-model
+  (mapv
+   ma/create-automata
+   [{:name          "Conway Game of life"
+     :f             conway
+     :init-st       initial-state-rand
+     :blank-st      (mapv (fn [_] false) (range 10000))
+     :cycle-cell-fn not
+     :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
+     :undo-levels   100}
+    {:name          "Conway Game of life (Array)"
+     :f             conway-arr
+     :init-st       initial-state-rand-arr
+     :blank-st      (clj->js (map (fn [_] false) (range 10000)))
+     :cycle-cell-fn not
+     :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
+     :undo-levels   100}
+    {:name          "Self Replicating"
+     :f             parity
+     :init-st       initial-state-e
+     :blank-st      (mapv (fn [_] false) (range 10000))
+     :cycle-cell-fn identity
+     :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
+     :undo-levels   100}
+    {:name        "Langton Ant"
+     :f           ant
+     :init-st     initial-state-ant
+     :blank-st    (mapv (fn [_] false) (range 10000))
+     :renderer-fn ;ant-drawer
+     (fn [v] (case v
+               true  "hsl(40, 10%, 10%)"
+               false "hsl(40, 10%, 90%)"
+               "hsl(360, 80%, 50%)"))
+     :undo-levels 100}]))
 
 (defn benchmark [aut]
   (let [is (:initial-state aut)
