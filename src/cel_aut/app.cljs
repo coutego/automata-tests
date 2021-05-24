@@ -1,7 +1,7 @@
 (ns cel-aut.app
   "Automata sample app"
   (:require
-   [cel-aut.ui-automata :as ui-a]
+   [cel-aut.components.ui-automata :as ui-a]
    [cel-aut.automatas :as as]
    [reagent.dom :as d]))
 

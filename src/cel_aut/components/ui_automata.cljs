@@ -1,4 +1,4 @@
-(ns cel-aut.ui-automata
+(ns cel-aut.components.ui-automata
   "Cellular automata reagent component"
   (:require
    [cel-aut.model.automata :as aut]
