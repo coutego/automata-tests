@@ -5,7 +5,6 @@
   (formats [_]
     "Returns the list of formats supported by this Drawable. The first on the list is
     the default one")
-
   (renderer
     [_]
     [_ fmt]
@@ -37,9 +36,9 @@
 
 (defprotocol IHistory
   (redo [_]
-    "Redos the last undone action. Does nothing if there are no actions to redo")
+    "Redoes the last undone action. Does nothing if there are no actions to redo")
   (undo [_]
-    "Undos the last action. Does nothing is there are no actions to undo")
+    "Undoes the last action. Does nothing is there are no actions to undo")
   (reset [_]
     "Resets the state to the initial (or default) state")
   (clear [_]
