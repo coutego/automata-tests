@@ -2,7 +2,6 @@
   "Cellular automata reagent component"
   (:require
    [cel-aut.model.automata :as aut]
-   [cel-aut.dev :as dev]
    [clojure.core.match :refer-macros [match]]
    [goog.async.nextTick]
    [goog.functions :as gf]

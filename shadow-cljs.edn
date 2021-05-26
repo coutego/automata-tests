@@ -9,8 +9,7 @@
                       :output-dir "public/js"
                       :asset-path "/js"
                       :modules    {:app {:entries [cel-aut.app]}}
-                      :devtools   {:after-load cel-aut.app/mount-root
-                                   :preloads [cel-aut/set-dev]}}}
+                      :devtools   {:after-load cel-aut.app/mount-root}}}
 
  :dev-http     {3000 {:root    "public"
                       :handler user/app}}}

@@ -1,8 +1,6 @@
 (ns cel-aut.automatas
   "Collection of sample automatas"
   (:require
-   #?(:clj  [clojure.core.match :refer [match]]
-      :cljs [clojure.core.match :refer-macros [match]])
    [cel-aut.model.automata :as ma]))
 
 #?(:cljs
@@ -120,14 +118,17 @@
         (update (+ ny (* 100 nx)) (fn [v] {:v v :dir ndir})))))
 
 (defn ant-drawer [val]
-  (match val
-         {:v v :dir dir} (case dir
-                           :up    (if v "hsl(0, 50%, 30%)" "hsl(0, 80%, 50%)")
-                           :right (if v "hsl(90, 50%, 30%)" "hsl(90, 80%, 50%)")
-                           :down  (if v "hsl(180, 50%, 30%)" "hsl(180, 80%, 50%)")
-                           :left  (if v "hsl(240, 50%, 30%)" "hsl(240, 80%, 50%)"))
-         false nil
-         :else "hsl(40, 20%, 20%)"))
+  (cond
+    (map? val)
+    (let [{v :v dir :dir} val]
+      (case dir
+           :up    (if v "hsl(0, 50%, 30%)" "hsl(0, 80%, 50%)")
+           :right (if v "hsl(90, 50%, 30%)" "hsl(90, 80%, 50%)")
+           :down  (if v "hsl(180, 50%, 30%)" "hsl(180, 80%, 50%)")
+           :left  (if v "hsl(240, 50%, 30%)" "hsl(240, 80%, 50%)")))
+
+    (= false val) "hsl(40, 20%, 90%)"
+    :else "hsl(40, 50%, 20%)"))
 
 (def automatas-model
   (mapv
@@ -151,18 +152,15 @@
      :f             parity
      :init-st       initial-state-e
      :blank-st      (mapv (fn [_] false) (range 10000))
-     :cycle-cell-fn identity
+     :cycle-cell-fn not
      :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
      :undo-levels   100}
     {:name        "Langton Ant"
      :f           ant
      :init-st     initial-state-ant
+     :cycle-cell-fn not
      :blank-st    (mapv (fn [_] false) (range 10000))
-     :renderer-fn ;ant-drawer
-     (fn [v] (case v
-               true  "hsl(40, 10%, 10%)"
-               false "hsl(40, 10%, 90%)"
-               "hsl(360, 80%, 50%)"))
+     :renderer-fn ant-drawer
      :undo-levels 100}]))
 
 (defn benchmark [f is & [times]]
