@@ -2,10 +2,13 @@
   "Cellular automata reagent component"
   (:require
    [cel-aut.model.automata :as aut]
+   [cel-aut.dev :as dev]
    [clojure.core.match :refer-macros [match]]
    [goog.async.nextTick]
    [goog.functions :as gf]
    [reagent.core :as r]))
+
+(def gstate (atom []))
 
 (defn- paint-cell [cols n val render-fn ctx]
   (let [x     (* 10 (quot n cols))
@@ -54,7 +57,7 @@
          {:start st-ref} (do-start st-ref)
          :stop           (assoc st :running? false)
          :reset          (update st :automata aut/reset)
-         :clear          (update st :automata aut/clear)
+         :blank          (update st :automata aut/blank)
          :next           (update st :automata aut/next-gen)
          :undo           (update st :automata aut/undo)
          :redo           (update st :automata aut/redo)
@@ -120,6 +123,7 @@
                          :delay         (max 0 (or delay 0))
                          :throttle      throttle
                          :info-visible? false})
+       _        (swap! gstate conj state)
        _        (add-watch
                  state
                  ::automata-watch
@@ -155,7 +159,7 @@
 
      :ui-clear-button
      (fn []
-       [ui-button "trash" #(swap! state command :clear) (:running? @state)])
+       [ui-button "trash" #(swap! state command :blank) (:running? @state)])
 
      :ui-info-button
      (fn []

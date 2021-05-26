@@ -5,18 +5,22 @@
       :cljs [clojure.core.match :refer-macros [match]])
    [cel-aut.model.automata :as ma]))
 
-(def initial-state-rand-arr
-  (let [a (js/Array. 9999)]
-    (loop [i 10000]
-      (when-not (< i 0)
-        (aset a i (< (rand-int 10) 3))
-        (recur (dec i))))
-    a))
+#?(:cljs
+   (def initial-state-rand-arr
+     (let [a (js/Array. 9999)]
+       (loop [i 10000]
+         (when-not (< i 0)
+           (aset a i (< (rand-int 10) 3))
+           (recur (dec i))))
+       a)))
 
 ;; Initial random state. It's a value instead of a fn so reset restores the
 ;; original state
-;(def initial-state-rand (mapv (fn [_] (< (rand-int 10) 3)) (range 10000)))
-(def initial-state-rand (into [] initial-state-rand-arr))
+
+#?(:clj
+    (def initial-state-rand (mapv (fn [_] (< (rand-int 10) 3)) (range 10000)))
+   :cljs
+    (def initial-state-rand (into [] initial-state-rand-arr)))
 
 ;; Letter 'E' state
 (def initial-state-e
@@ -68,14 +72,15 @@
   [state]
   (into [] (map-indexed (fn [n v] (conway-xy n v state)) state)))
 
-(defn conway-arr
-  "Calculates the next state from a given one for the Conway algorithm"
-  [state]
-  (let [ret (js/Array. 10000)]
-    (dorun
-     (for [i (range 10000)]
-       (aset ret i (conway-xy i (aget state i) state))))
-    ret))
+#?(:cljs
+   (defn conway-arr
+     "Calculates the next state from a given one for the Conway algorithm"
+     [state]
+     (let [ret (js/Array. 10000)]
+       (dorun
+        (for [i (range 10000)]
+          (aset ret i (conway-xy i (aget state i) state))))
+       ret)))
 
 (defn parity-xy
   "Calculates the value of the cell at x y on the next generation for the parity
@@ -134,13 +139,14 @@
      :cycle-cell-fn not
      :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
      :undo-levels   100}
-    {:name          "Conway Game of life (Array)"
-     :f             conway-arr
-     :init-st       initial-state-rand-arr
-     :blank-st      (clj->js (map (fn [_] false) (range 10000)))
-     :cycle-cell-fn not
-     :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
-     :undo-levels   100}
+    #?(:cljs
+       {:name          "Conway Game of life (Array)"
+        :f             conway-arr
+        :init-st       initial-state-rand-arr
+        :blank-st      (clj->js (map (fn [_] false) (range 10000)))
+        :cycle-cell-fn not
+        :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
+        :undo-levels   100})
     {:name          "Self Replicating"
      :f             parity
      :init-st       initial-state-e
@@ -159,12 +165,10 @@
                "hsl(360, 80%, 50%)"))
      :undo-levels 100}]))
 
-(defn benchmark [aut]
-  (let [is (:initial-state aut)
-        f  (:f aut)]
-    (with-out-str
-      (time
-       (loop [i 0
-              st is]
-         (when (< i 1000)
-           (recur (inc i) (f st))))))))
+(defn benchmark [f is & [times]]
+  (with-out-str
+    (time
+     (loop [i 0
+            st is]
+       (when (< i (or times 1000))
+         (recur (inc i) (f st)))))))

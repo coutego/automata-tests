@@ -3,6 +3,7 @@
   (:require
    [cel-aut.components.ui-automata :as ui-a]
    [cel-aut.automatas :as as]
+   [cel-aut.dev :as dev]
    [reagent.dom :as d]))
 
 (defn- ui-automata-section [a]
@@ -32,10 +33,15 @@
           (map ui-automata-section)
           (reduce separator-reducer))
 
-     [:div {:style {:margin-top :2rem :opacity "0%"}} " - "]]]])
+     [:div {:style {:margin-top :2rem :opacity "0%"}} " - "]
+     [:div "Environment: " (if (dev/in-dev?) "Development" "Release")]]]])
 
-(defn mount-root []
+(defn real-mount-root []
   (d/render [home-page] (.getElementById js/document "app")))
 
+(defn mount-root []
+  (reset! dev/dev true)
+  (real-mount-root))
+
 (defn ^:export init! []
-  (mount-root))
+  (real-mount-root))
