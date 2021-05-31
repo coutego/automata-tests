@@ -134,7 +134,7 @@
   (set-undo-levels [a n]
     (let [n (max 0 (int n))]
       (-> a
-          (update-in [:history :keep] n))))
+          (assoc-in [:history :keep] n))))
 
   IDrawable
   (formats [_] formats)
