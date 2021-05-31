@@ -91,7 +91,10 @@
     (:cell-states a))
 
   (cycle-cell [a cell]
-    (update a :state #(cycle-cell-fn % cell)))
+    (let [new-st (cycle-cell-fn (:state a) cell)]
+      (-> a
+          (update :history h/push new-st)
+          (assoc :state new-st))))
 
   IHistory
   (redo [a]
