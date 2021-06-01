@@ -7,7 +7,7 @@
    [goog.functions :as gf]
    [reagent.core :as r]))
 
-(def gstate (atom []))
+(def ^:private gstate (atom []))
 
 (defn- paint-cell [cols n val render-fn ctx]
   (let [x     (* 10 (quot n cols))
@@ -51,7 +51,7 @@
         n      (+ y (* x cols))]
     (update st :automata #(aut/cycle-cell % n))))
 
-(defn command [st cmd]
+(defn- command [st cmd]
   (match cmd
          {:start st-ref} (do-start st-ref)
          :stop           (assoc st :running? false)
@@ -69,7 +69,7 @@
                            (js/console.error "Command not implemented: " cmd)
                            st)))
 
-(defn ui-button [icon on-click & [inactive?]]
+(defn- ui-button [icon on-click & [inactive?]]
   [:div.ui.icon.button
    {:on-click (if inactive? #() on-click)
     :disabled (if inactive? :true :false)
@@ -98,7 +98,7 @@
     (gf/throttle paint-board throttle)
     paint-board))
 
-(defn on-state-change [st o n]
+(defn- on-state-change [st o n]
   (when (or (not= (:automata o) (:automata n))
             (not= (:canvas o) (:canvas n)))
     (when-let [r (:renderer n)]
@@ -110,8 +110,57 @@
 
 (defn gen-ui-automata-components
   "Function (not reagent component) that creates the model + individual components
-  for the automata. Clients can arrange and use the returned components and properties
-  as they wish. Clients should call the :clean-up function on a r/with-let finally clause"
+  for the automata.
+
+  Clients can arrange and use the returned components and properties
+  as they wish. Clients should call the :clean-up function on a r/with-let finally clause
+
+  The function returns a map with the following keys:
+
+  :ui-start-button
+  : Button that starts/stops the automata
+
+  :ui-undo-button
+  : Button that undoes the last action and disables itself if there are no actions to undo
+
+  :ui-redo-button
+  : Button that redoes the last action and disables itself if there are no actions to redo
+
+  :ui-next-button
+  : Button that advances one step in the automata, calculation a new generation
+
+  :ui-reset-button
+  : Button that resets the board to the initial state
+
+  :ui-clear-button
+  : Button that clears the board
+
+  :ui-info-button
+  : Button that de/activates the info region
+
+  :ui-delay-input
+  : Input where the user can set the delay between generations. The change takes place immediately
+
+  :ui-throttle-input
+  : Input where the user can set the throttle between paints. The change takes place immediately
+
+  :ui-undo-input
+  : Input where the user can set the generations to keep in memory. The change takes place immediately
+
+  :ui-board
+  : The board itself
+
+  :running?
+  : Function that returns true/false if the autoplay is running or not
+
+  :generation
+  : Function that returns the total number of generations calculated, from the initial state
+
+  :info-visible?
+  : Function that returns true/false if the info area is visitable or not
+
+  :clean-up
+  : Function that cleans the resouces created by this component "
   [a {:keys [delay throttle]
       :or   {delay 200 throttle 0}}]
   (let
@@ -210,12 +259,20 @@
   "Reagent component for an automata with the given initial board
   (a vector of 100 x 100 elements where the element with coordinates
   (x, y) is located at 100x + y) and the given transition function `f`.
+
   `f` is a function from one state to the next one.
+
   The supported options are:
-  - `delay`: delay in ms between generations when in running mode
-  - `throttle`: time in ms to use when throttling paints (i.e. paints will happen at most
+
+  delay
+  : delay in ms between generations when in running mode
+
+  throttle
+  : time in ms to use when throttling paints (i.e. paints will happen at most
     every that number of ms)
-  - `keep`: number of generations to keep in memory as to be able to go to the previous board"
+
+  keep
+  : number of generations to keep in memory as to be able to go to the previous board"
   [a {:keys [delay throttle cell-renderer]
       :or   {delay 200 throttle 0}
       :as opts}]

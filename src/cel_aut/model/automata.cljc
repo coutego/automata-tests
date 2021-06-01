@@ -11,9 +11,12 @@
     [_ fmt]
     "Returns the renderer function for the given format or the for the default one if format
     is not provided.
+
     The concrete type returned will depend on the format. For the format :2d, the
     returned function accepts one parameter corresponding to the number that is defined as
-    p = y + cols * x
+
+       p = y + cols * x
+
     where x and y are the coordinates of the point")
 
   (geometry [_]
@@ -149,21 +152,27 @@
   "Creates an automata from the given parameters.
 
   :f
-      Function that returns the next state from a given one
+  :   Function that returns the next state from a given one
+
   :init-st
-      Initial state of the automata. The state can be anything, it won't be used.
+  :   Initial state of the automata. The state can be anything, it won't be used.
+
   :to-drawable-fn
-      Function that transforms the state in a represention {:rows n1 :cols n2 :elements v}
+  :   Function that transforms the state in a represention {:rows n1 :cols n2 :elements v}
+
   :blank-st
-      Blank state, which can be different from the initial state
+  :   Blank state, which can be different from the initial state
+
   :cycle-cell-fn
-      Function that takes parameters (state x y) and returns the state modified on
+  :   Function that takes parameters (state x y) and returns the state modified on
       the cell x y with the next valid value from the list of values
+
   :cell-states
-      Vector with all the possible values for a given cell. Defaults to [true false]
+  :   Vector with all the possible values for a given cell. Defaults to [true false]
       if not provided
+
   :undo-levels
-      Number of undo levels to keep in the history"
+  :   Number of undo levels to keep in the history"
   [{:keys [name f init-st renderer-fn blank-st cycle-cell-fn cell-states undo-levels]}]
   (let [name          (or name "Unknown automata")
         blank-st      (or blank-st init-st)
