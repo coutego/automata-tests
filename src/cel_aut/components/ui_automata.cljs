@@ -286,15 +286,20 @@
     [:<>
      [ui-board]
      [:div {:style {:margin :1rem}}]
+
      [:div.ui.buttons
-      [ui-start-button] [ui-next-button] [ui-undo-button] [ui-redo-button]
-      [ui-reset-button] [ui-clear-button]]
+      [ui-start-button] [ui-next-button] [ui-undo-button]
+      [ui-redo-button] [ui-reset-button] [ui-clear-button]]
+
      [:span {:style {:margin-left :0.5rem}}]
      [ui-info-button]
+
      (when (info-visible?)
        [:div.ui.segment {:style {:background-color "hsl(40, 20%, 95%)"}}
         [:div.ui.form
          [:div.fields
           [ui-delay-input] [ui-throttle-input] [ui-undo-input] [ui-generation-input]]]])
+
      [:div {:style {:margin :0.4rem}}]]
+
     (finally (clean-up))))
