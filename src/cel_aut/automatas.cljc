@@ -16,8 +16,6 @@
         (recur (dec i))))
     a))
 
-(def initial-state-rand (into [] initial-state-rand-arr))
-
 ;; Letter 'E' state
 (def initial-state-e
   (-> (mapv (constantly false) (range 10000))
@@ -62,11 +60,6 @@
       (and val (> nei 3))       false
       (and (not val) (= nei 3)) true
       :else                     false)))
-
-(defn conway
-  "Calculates the next state from a given one for the Conway algorithm"
-  [state]
-  (into [] (map-indexed (fn [n v] (conway-xy n v state)) state)))
 
 (defn conway-arr
   "Calculates the next state from a given one for the Conway algorithm"
@@ -134,14 +127,6 @@
   (mapv
    ma/create-automata
    [{:name          "Conway Game of life"
-     :f             conway
-     :init-st       initial-state-rand
-     :blank-st      (mapv (fn [_] false) (range 10000))
-     :cycle-cell-fn #(update %1 %2 not)
-     :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
-     :undo-levels   100}
-
-    {:name          "Conway Game of life (Array)"
      :f             conway-arr
      :init-st       initial-state-rand-arr
      :blank-st      #?(:clj  initial-state-rand-arr ;; FIXME
@@ -151,7 +136,7 @@
        (let [ret (js/Array.)]
          (dotimes [n 10000]
            (aset ret n (aget st n))
-         (aset ret x (not (aget st x))))
+           (aset ret x (not (aget st x))))
          ret))
      :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
      :undo-levels   100}
