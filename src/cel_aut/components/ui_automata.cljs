@@ -9,11 +9,14 @@
 
 (def ^:private gstate (atom []))
 
+(def bg-color "hsl(40, 20%, 90%)")
+(def fg-color "hsl(40, 15%, 30%)")
+
 (defn- paint-cell [cols n val render-fn ctx]
   (let [x     (* 10 (quot n cols))
         y     (* 10 (rem n cols))
         color (try (render-fn val) (catch :default e (println "Error: " e)))]
-    (set! (.-fillStyle ctx) (or color "hsl(40, 10%, 10%)"))
+    (set! (.-fillStyle ctx) (or color fg-color))
     (.fillRect ctx x y 9 9)))
 
 (defn- paint-board [st]

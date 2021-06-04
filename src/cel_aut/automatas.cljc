@@ -1,7 +1,8 @@
 (ns cel-aut.automatas
   "Collection of sample automatas"
   (:require
-   [cel-aut.model.automata :as ma]))
+   [cel-aut.model.automata :as ma]
+   [cel-aut.components.ui-automata :as ui]))
 
 ;; Initial random state. It's a value instead of a fn so reset restores the
 ;; original state
@@ -120,8 +121,8 @@
            :down  (if v "hsl(180, 50%, 30%)" "hsl(180, 80%, 50%)")
            :left  (if v "hsl(240, 50%, 30%)" "hsl(240, 80%, 50%)")))
 
-    (= false val) "hsl(40, 20%, 90%)"
-    :else "hsl(40, 50%, 20%)"))
+    (= false val) ui/bg-color
+    :else ui/fg-color))
 
 (def automatas-model
   (mapv
@@ -138,7 +139,7 @@
            (aset ret n (aget st n))
            (aset ret x (not (aget st x))))
          ret))
-     :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
+     :renderer-fn   {true ui/fg-color false ui/bg-color}
      :undo-levels   100}
 
     {:name          "Self Replicating"
@@ -146,7 +147,7 @@
      :init-st       initial-state-e
      :blank-st      (mapv (fn [_] false) (range 10000))
      :cycle-cell-fn #(update %1 %2 not)
-     :renderer-fn   {true "hsl(40, 10%, 10%)" false "hsl(40, 10%, 90%)"}
+     :renderer-fn   {true ui/fg-color false ui/bg-color}
      :undo-levels   100}
 
     {:name        "Langton Ant"
