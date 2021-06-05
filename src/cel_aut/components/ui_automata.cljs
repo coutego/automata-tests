@@ -26,7 +26,7 @@
           render-fn (aut/renderer a)
           cols      (-> a aut/geometry :cols)]
       (dorun (map-indexed (fn [n val] (paint-cell cols n val render-fn ctx))
-                          (:state a))))))
+                          (aut/state a))))))
 
 (defn- -do-start [st-ref]
   (let [del (max 0 (or (:delay @st-ref) 0))

@@ -29,7 +29,10 @@
     [a]
     [a num]
     "Calculates and returns num number of generations of the given automata
-    (1 if num is not provided)."))
+    (1 if num is not provided).")
+
+  (state [_]
+    "Returns (a copy of) the internal state of the automata"))
 
 (defprotocol IEditable
   (cell-states [_]
@@ -69,17 +72,14 @@
   (set-undo-levels [_ n]
     "Changes the level of undo-levels in the history to n"))
 
-(defrecord Automata
-    [name f state cell-states init-st blank-st
-     cycle-cell-fn renderer-fn formats
-     history]
-
+(deftype Automata [m]
   IAutomata
-  (next-gen [a]
-    (let [new-st (f (:state a))]
-      (-> a
+  (next-gen [_]
+    (let [new-st ((:f m) (:state m))]
+      (-> m
           (assoc :state new-st)
-          (update :history h/push new-st))))
+          (update :history h/push new-st)
+          Automata.)))
 
   (next-gen [a num]
     (let [n (max 1 (int num))]
@@ -89,60 +89,68 @@
           a
           (recur (inc i) (next-gen a))))))
 
-  IEditable
-  (cell-states [a]
-    (:cell-states a))
+  (state [_] (:state m))
 
-  (cycle-cell [a cell]
-    (let [new-st (cycle-cell-fn (:state a) cell)]
-      (-> a
+  IEditable
+  (cell-states [_]
+    (:cell-states m))
+
+  (cycle-cell [_ cell]
+    (let [new-st ((:cycle-cell-fn m) (:state m) cell)]
+      (-> m
           (update :history h/push new-st)
-          (assoc :state new-st))))
+          (assoc :state new-st)
+          Automata.)))
 
   IHistory
-  (redo [a]
-    (-> a
+  (redo [_]
+    (-> m
         (update :history h/redo)
-        (as-> it (assoc it :state (h/head (:history it))))))
+        (as-> it (assoc it :state (h/head (:history it))))
+        Automata.))
 
-  (undo [a]
-    (-> a
+  (undo [_]
+    (-> m
         (update :history h/undo)
-        (as-> it (assoc it :state (h/head (:history it))))))
+        (as-> it (assoc it :state (h/head (:history it))))
+        Automata.))
 
-  (reset [a]
-    (-> a
+  (reset [_]
+    (-> m
         (update :history h/reset)
-        (update :history h/push init-st)
-        (as-> it (assoc it :state (h/head (:history it))))))
+        (update :history h/push (:init-st m))
+        (as-> it (assoc it :state (h/head (:history it))))
+        Automata.))
 
-  (blank [a]
-    (-> a
+  (blank [_]
+    (-> m
         (update :history h/reset)
-        (update :history h/push blank-st)
-        (as-> it (assoc it :state (h/head (:history it))))))
+        (update :history h/push (:blank-st m))
+        (as-> it (assoc it :state (h/head (:history it))))
+        Automata.))
 
-  (total [a]
-    (-> a :history h/total))
+  (total [_]
+    (-> m :history h/total))
 
-  (can-redo? [a]
-    (-> a :history h/can-redo?))
+  (can-redo? [_]
+    (-> m :history h/can-redo?))
 
-  (can-undo? [a]
-    (-> a :history h/can-undo?))
+  (can-undo? [_]
+    (-> m :history h/can-undo?))
 
-  (undo-levels [a]
-    (-> a :history :keep))
+  (undo-levels [_]
+    (-> m :history :keep))
 
-  (set-undo-levels [a n]
+  (set-undo-levels [_ n]
     (let [n (max 0 (int n))]
-      (-> a
-          (assoc-in [:history :keep] n))))
+      (-> m
+          (assoc-in [:history :keep] n)
+          Automata.)))
 
   IDrawable
-  (formats [_] formats)
+  (formats [_] (:formats m))
 
-  (renderer [_] renderer-fn)
+  (renderer [_] (:renderer-fn m))
 
   (renderer [a fmt] (renderer a)) ; FIXME
 
@@ -173,16 +181,28 @@
 
   :undo-levels
   :   Number of undo levels to keep in the history"
-  [{:keys [name f init-st renderer-fn blank-st cycle-cell-fn cell-states undo-levels]}]
-  (let [name          (or name "Unknown automata")
-        blank-st      (or blank-st init-st)
-        undo-levels   (or undo-levels 0)
-        history       (h/init undo-levels init-st)
-        formats       [:2d]
-        state         init-st
-        cell-states   (or cell-states [true false])
-        cycle-cell-fn (or cycle-cell-fn identity)]
+  [{:keys [name f init-st renderer-fn blank-st cycle-cell-fn cell-states undo-levels] :as args}]
+  (let [m
+        (cond-> args
+          (nil? name)
+          (assoc :name "Unknown automata")
 
-    (->Automata name f state cell-states init-st blank-st
-                cycle-cell-fn renderer-fn formats
-                history)))
+          (nil? blank-st)
+          (assoc :blank-st init-st)
+
+          (or (nil? undo-levels) (< undo-levels 0))
+          (assoc :undo-levels 0)
+
+          (nil? cell-states)
+          (assoc :cell-states [true false])
+
+          (nil? cycle-cell-fn)
+          (assoc :cycle-cell-fn identity)
+
+          true
+          (as-> it
+              (assoc it :history (h/init undo-levels init-st))
+              (assoc it :formats [:2d])
+              (assoc it :state init-st)))]
+
+    (Automata. m)))
