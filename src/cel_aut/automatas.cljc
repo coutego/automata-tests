@@ -70,7 +70,7 @@
                :cljs
                (js/Array. 10000))]
     (dorun
-     (for [i (range 9999)]
+     (dotimes [i 10000]
        (aset ret i (conway-xy i (aget state i) state))))
     ret))
 
