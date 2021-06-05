@@ -12,10 +12,10 @@
 (def bg-color "hsl(40, 20%, 90%)")
 (def fg-color "hsl(40, 15%, 30%)")
 
-(defn- paint-cell [cols n val render-fn ctx]
+(defn- paint-cell [cols n render-fn aut-st ctx]
   (let [x     (* 10 (quot n cols))
         y     (* 10 (rem n cols))
-        color (try (render-fn val) (catch :default e (println "Error: " e)))]
+        color (try (render-fn aut-st n) (catch :default e (println "Error: " e)))]
     (set! (.-fillStyle ctx) (or color fg-color))
     (.fillRect ctx x y 9 9)))
 
@@ -24,9 +24,10 @@
     (.clearRect ctx 0 0 1000 1000)
     (let [a         (:automata st)
           render-fn (aut/renderer a)
-          cols      (-> a aut/geometry :cols)]
-      (dorun (map-indexed (fn [n val] (paint-cell cols n val render-fn ctx))
-                          (aut/state a))))))
+          cols      (-> a aut/geometry :cols)
+          rows      (-> a aut/geometry :rows)]
+      (dotimes [n (* rows cols)]
+        (paint-cell cols n render-fn (aut/state a) ctx)))))
 
 (defn- -do-start [st-ref]
   (let [del (max 0 (or (:delay @st-ref) 0))

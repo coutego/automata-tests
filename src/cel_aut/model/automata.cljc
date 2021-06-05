@@ -12,12 +12,17 @@
     "Returns the renderer function for the given format or the for the default one if format
     is not provided.
 
-    The concrete type returned will depend on the format. For the format :2d, the
-    returned function accepts one parameter corresponding to the number that is defined as
+    The returned function accepts two parameters. The first one is the internal state of
+    the automata. The second parameter will depend on the format.
+
+    For the format :2d, the parameter is the number p defined as:
 
        p = y + cols * x
 
-    where x and y are the coordinates of the point")
+    where x and y are the coordinates of the point and returns the color to render")
+
+  (state [_]
+    "Returns (a copy of) the internal state of the drawable")
 
   (geometry [_]
     "Returns the geometry for the given format (or the first one if it's not provided).
@@ -29,10 +34,7 @@
     [a]
     [a num]
     "Calculates and returns num number of generations of the given automata
-    (1 if num is not provided).")
-
-  (state [_]
-    "Returns (a copy of) the internal state of the automata"))
+    (1 if num is not provided)."))
 
 (defprotocol IEditable
   (cell-states [_]
@@ -88,8 +90,6 @@
         (if (>= i n)
           a
           (recur (inc i) (next-gen a))))))
-
-  (state [_] (:state m))
 
   IEditable
   (cell-states [_]
@@ -154,7 +154,9 @@
 
   (renderer [a fmt] (renderer a)) ; FIXME
 
-  (geometry [_] {:rows 100 :cols 100})) ; FIXME
+  (geometry [_] {:rows 100 :cols 100}) ; FIXME
+
+  (state [_] (:state m)))
 
 (defn create-automata
   "Creates an automata from the given parameters.

@@ -111,18 +111,19 @@
         (assoc (+ y (* 100 x)) (not v))
         (update (+ ny (* 100 nx)) (fn [v] {:v v :dir ndir})))))
 
-(defn ant-drawer [val]
-  (cond
-    (map? val)
-    (let [{v :v dir :dir} val]
-      (case dir
-           :up    (if v "hsl(0, 50%, 30%)" "hsl(0, 80%, 50%)")
-           :right (if v "hsl(90, 50%, 30%)" "hsl(90, 80%, 50%)")
-           :down  (if v "hsl(180, 50%, 30%)" "hsl(180, 80%, 50%)")
-           :left  (if v "hsl(240, 50%, 30%)" "hsl(240, 80%, 50%)")))
+(defn ant-drawer [st n]
+  (let [val (get st n)]
+    (cond
+      (map? val)
+      (let [{v :v dir :dir} val]
+        (case dir
+          :up    (if v "hsl(0, 50%, 30%)" "hsl(0, 80%, 50%)")
+          :right (if v "hsl(90, 50%, 30%)" "hsl(90, 80%, 50%)")
+          :down  (if v "hsl(180, 50%, 30%)" "hsl(180, 80%, 50%)")
+          :left  (if v "hsl(240, 50%, 30%)" "hsl(240, 80%, 50%)")))
 
-    (= false val) ui/bg-color
-    :else ui/fg-color))
+      (= false val) ui/bg-color
+      :else ui/fg-color)))
 
 (def automatas-model
   (mapv
@@ -139,7 +140,8 @@
            (aset ret n (aget st n))
            (aset ret x (not (aget st x))))
          ret))
-     :renderer-fn   {true ui/fg-color false ui/bg-color}
+     :renderer-fn   (fn [st n]
+                      ({true ui/fg-color false ui/bg-color} (aget st n)))
      :undo-levels   100}
 
     {:name          "Self Replicating"
@@ -147,7 +149,8 @@
      :init-st       initial-state-e
      :blank-st      (mapv (fn [_] false) (range 10000))
      :cycle-cell-fn #(update %1 %2 not)
-     :renderer-fn   {true ui/fg-color false ui/bg-color}
+     :renderer-fn   (fn [st n]
+                      ({true ui/fg-color false ui/bg-color} (get st n)))
      :undo-levels   100}
 
     {:name        "Langton Ant"
