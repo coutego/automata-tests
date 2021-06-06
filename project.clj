@@ -9,7 +9,7 @@
                  [reagent "1.0.0"]
                  [org.clojure/core.match "1.0.0"]
                  [metosin/malli "0.5.1"]]
-                 ;[teknql/aave "f0f0d68"]]
+                                        ;[teknql/aave "f0f0d68"]]
 
   :plugins [[lein-shadow "0.2.0"]
             [lein-codox "0.10.7"]
@@ -29,16 +29,18 @@
      :output-dir "public/js"
      :asset-path "/js"
      :modules    {:app {:entries [cel-aut.app]}}
+     :build-options {:cache-level :off}
      :devtools   {:after-load cel-aut.app/mount-root
                   :http-root "public"
                   :http-port 3000}}
     :browser-test
-     {:target    :browser-test
-      :ns-regexp "-test$"
-      :runner-ns shadow.test.browser
-      :test-dir  "target/browser-test"
-      :devtools  {:http-root "target/browser-test"
-                  :http-port 3010}}}}
+    {:target    :browser-test
+     :ns-regexp "-test$"
+     :runner-ns shadow.test.browser
+     :build-options {:cache-level :off}
+     :test-dir  "target/browser-test"
+     :devtools  {:http-root "target/browser-test"
+                 :http-port 3010}}}}
 
   :aliases {"dev"          ["with-profile" "dev" "do"
                             ["shadow" "watch" "app"]]
