@@ -3,11 +3,12 @@
   (:require
    [cel-aut.components.ui-automata :as ui-a]
    [cel-aut.automatas :as as]
+   [cel-aut.model.automata :as am]
    [reagent.dom :as d]))
 
 (defn- ui-automata-section [a]
   [:div
-   [:h2 (:name a)]
+   [:h2 (am/aut-name a)]
    [ui-a/ui-automata a {:delay 50 :throttle 16}]])
 
 (defn- separator-reducer [acc n]

@@ -30,6 +30,9 @@
     is a map {:rows n1 :cols n2}"))
 
 (defprotocol IAutomata
+  (aut-name [_]
+    "Returns the name of this automata")
+
   (next-gen
     [a]
     [a num]
@@ -76,6 +79,8 @@
 
 (deftype Automata [m]
   IAutomata
+  (aut-name [_] (:name m))
+
   (next-gen [_]
     (let [new-st ((:f m) (:state m))]
       (-> m
